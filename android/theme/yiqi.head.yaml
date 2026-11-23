@@ -1,0 +1,149 @@
+config_version: "3.0"
+name: 一炁
+author: YiQi
+
+style:
+  auto_caps: false
+  candidate_padding: 10
+  candidate_spacing: 0.0
+  candidate_text_size: 20
+  candidate_view_height: 34
+  candidate_corner_radius: 6
+  comment_height: 12
+  comment_position: right
+  comment_text_size: 12
+  horizontal_gap: 6
+  vertical_gap: 10
+  keyboard_padding: 4
+  keyboard_padding_bottom: 4
+  keyboard_padding_land: 60
+  key_height: 46
+  key_long_text_size: 16
+  key_text_size: 22
+  key_width: 10.0
+  label_text_size: 16
+  symbol_text_size: 9
+  round_corner: 6
+  shadow_radius: 0.0
+  key_border: 0
+  key_press_offset_x: 0
+  key_press_offset_y: 0
+  keyboard_height: 236
+  keyboard_height_land: 190
+  popup_text_size: 26
+  reset_ascii_mode_on_focus_change: false
+  enter_label_mode: 3
+  enter_labels:
+    go: 前往
+    done: 完成
+    next: 下一步
+    pre: 上一步
+    search: 搜索
+    send: 发送
+    default: 换行
+
+preedit:
+  horizontal_padding: 10
+  top_start_radius: 8
+  top_end_radius: 8
+  foreground:
+    font_size: 15
+
+window:
+  insets:
+    vertical: 4
+    horizontal: 6
+  item_padding:
+    horizontal: 6
+  corner_radius: 8
+  foreground:
+    label_font_size: 16
+    text_font_size: 18
+    comment_font_size: 14
+
+fallback_colors:
+  candidate_text_color: text_color
+
+preset_color_schemes:
+  default:
+    name: 一炁浅色
+    dark_scheme: dark
+    back_color: 0xEDEEF2
+    keyboard_back_color: 0xEDEEF2
+    root_background: 0xEDEEF2
+    candidate_background: 0xEDEEF2
+    border_color: 0xEDEEF2
+    candidate_separator_color: 0x00EDEEF2
+    text_color: 0x1F1F1F
+    text_back_color: 0xFFFFFF
+    hilited_text_color: 0x52B17F
+    hilited_back_color: 0xFFFFFF
+    candidate_text_color: 0x1F1F1F
+    comment_text_color: 0x8A8A8E
+    hilited_candidate_text_color: 0x52B17F
+    hilited_candidate_back_color: 0x00EDEEF2
+    hilited_comment_text_color: 0x8A8A8E
+    label_color: 0x8A8A8E
+    key_back_color: 0xFFFFFF
+    key_text_color: 0x1F1F1F
+    key_symbol_color: 0x00FFFFFF
+    key_border_color: 0xFFFFFF
+    hilited_key_back_color: 0xD3D6DC
+    hilited_key_text_color: 0x1F1F1F
+    hilited_key_symbol_color: 0x00FFFFFF
+    off_key_back_color: 0xFFFFFF
+    off_key_text_color: 0x1F1F1F
+    on_key_back_color: 0xD3D6DC
+    on_key_text_color: 0x1F1F1F
+    hilited_off_key_back_color: 0xD3D6DC
+    hilited_on_key_back_color: 0xC4C8CF
+    fn_back: 0xD3D6DC
+    fn_text: 0x1F1F1F
+    accent_back: 0x52B17F
+    accent_text: 0xFFFFFF
+    preview_back_color: 0xFFFFFF
+    preview_text_color: 0x1F1F1F
+    shadow_color: 0x00000000
+    long_text_back_color: 0xFFFFFF
+    liquid_keyboard_background: 0xEDEEF2
+  dark:
+    name: 一炁深色
+    light_scheme: default
+    back_color: 0x1C1C1E
+    keyboard_back_color: 0x1C1C1E
+    root_background: 0x1C1C1E
+    candidate_background: 0x1C1C1E
+    border_color: 0x1C1C1E
+    candidate_separator_color: 0x001C1C1E
+    text_color: 0xE8E8E8
+    text_back_color: 0x2C2C2E
+    hilited_text_color: 0x5FC08E
+    hilited_back_color: 0x2C2C2E
+    candidate_text_color: 0xE8E8E8
+    comment_text_color: 0x8E8E93
+    hilited_candidate_text_color: 0x5FC08E
+    hilited_candidate_back_color: 0x001C1C1E
+    hilited_comment_text_color: 0x8E8E93
+    label_color: 0x8E8E93
+    key_back_color: 0x3A3A3C
+    key_text_color: 0xF2F2F2
+    key_symbol_color: 0x003A3A3C
+    key_border_color: 0x3A3A3C
+    hilited_key_back_color: 0x2A2A2C
+    hilited_key_text_color: 0xF2F2F2
+    hilited_key_symbol_color: 0x003A3A3C
+    off_key_back_color: 0x3A3A3C
+    off_key_text_color: 0xF2F2F2
+    on_key_back_color: 0x2A2A2C
+    on_key_text_color: 0xF2F2F2
+    hilited_off_key_back_color: 0x2A2A2C
+    hilited_on_key_back_color: 0x232325
+    fn_back: 0x2A2A2C
+    fn_text: 0xF2F2F2
+    accent_back: 0x4AA374
+    accent_text: 0xFFFFFF
+    preview_back_color: 0x3A3A3C
+    preview_text_color: 0xF2F2F2
+    shadow_color: 0x00000000
+    long_text_back_color: 0x3A3A3C
+    liquid_keyboard_background: 0x1C1C1E

@@ -1,0 +1,128 @@
+preset_keyboards:
+  default:
+    name: 一炁 26 键
+    ascii_mode: 0
+    width: 10
+    height: 46
+    keys:
+    - {click: q, long_click: '1'}
+    - {click: w, long_click: '2'}
+    - {click: e, long_click: '3'}
+    - {click: r, long_click: '4'}
+    - {click: t, long_click: '5'}
+    - {click: y, long_click: '6'}
+    - {click: u, long_click: '7'}
+    - {click: i, long_click: '8'}
+    - {click: o, long_click: '9'}
+    - {click: p, long_click: '0'}
+    - {width: 5}
+    - {click: a, long_click: '@'}
+    - {click: s, long_click: '#'}
+    - {click: d, long_click: '%'}
+    - {click: f, long_click: '&'}
+    - {click: g, long_click: '*'}
+    - {click: h, long_click: '-'}
+    - {click: j, long_click: '+'}
+    - {click: k, long_click: '('}
+    - {click: l, long_click: ')'}
+    - {width: 5}
+    - {click: Qi_shift, width: 14, key_back_color: fn_back, key_text_color: fn_text}
+    - {width: 1}
+    - {click: z, long_click: '!'}
+    - {click: x, long_click: '?'}
+    - {click: c, long_click: ':'}
+    - {click: v, long_click: ';'}
+    - {click: b, long_click: '/'}
+    - {click: n, long_click: '~'}
+    - {click: m, long_click: '_'}
+    - {width: 1}
+    - {click: Qi_backspace, width: 14, key_back_color: fn_back, key_text_color: fn_text}
+    - {click: Qi_symbols, width: 12, key_back_color: fn_back, key_text_color: fn_text}
+    - {click: Qi_number, width: 12, key_back_color: fn_back, key_text_color: fn_text}
+    - {click: ',', label: '，', width: 9}
+    - {click: space, width: 34}
+    - {click: '.', label: '。', width: 9}
+    - {click: Qi_lang, width: 9, key_back_color: fn_back, key_text_color: fn_text}
+    - {click: Return, width: 15, key_back_color: accent_back, key_text_color: accent_text}
+
+  number:
+    name: 一炁数字
+    ascii_mode: 1
+    width: 20
+    height: 46
+    keys:
+    - {click: '+', width: 16, key_back_color: fn_back, key_text_color: fn_text}
+    - {click: '1', width: 22.6}
+    - {click: '2', width: 22.6}
+    - {click: '3', width: 22.6}
+    - {click: Qi_backspace, width: 16.2, key_back_color: fn_back, key_text_color: fn_text}
+    - {click: '-', width: 16, key_back_color: fn_back, key_text_color: fn_text}
+    - {click: '4', width: 22.6}
+    - {click: '5', width: 22.6}
+    - {click: '6', width: 22.6}
+    - {click: '.', width: 16.2, key_back_color: fn_back, key_text_color: fn_text}
+    - {click: '*', width: 16, key_back_color: fn_back, key_text_color: fn_text}
+    - {click: '7', width: 22.6}
+    - {click: '8', width: 22.6}
+    - {click: '9', width: 22.6}
+    - {click: '@', width: 16.2, key_back_color: fn_back, key_text_color: fn_text}
+    - {click: Qi_back, width: 16, key_back_color: fn_back, key_text_color: fn_text}
+    - {click: ',', width: 22.6}
+    - {click: '0', width: 22.6}
+    - {click: Qi_space, width: 22.6}
+    - {click: Return, width: 16.2, key_back_color: accent_back, key_text_color: accent_text}
+
+  symbols:
+    name: 一炁符号
+    ascii_mode: 0
+    width: 10
+    height: 46
+    keys:
+    - {click: '，', ascii: ','}
+    - {click: '。', ascii: '.'}
+    - {click: '？', ascii: '?'}
+    - {click: '！', ascii: '!'}
+    - {click: '、'}
+    - {click: '：', ascii: ':'}
+    - {click: '；', ascii: ';'}
+    - {click: '“'}
+    - {click: '”'}
+    - {click: '…'}
+    - {click: '（', ascii: '('}
+    - {click: '）', ascii: ')'}
+    - {click: '《'}
+    - {click: '》'}
+    - {click: '【'}
+    - {click: '】'}
+    - {click: '「'}
+    - {click: '」'}
+    - {click: '～', ascii: '~'}
+    - {click: '·'}
+    - {click: '@'}
+    - {click: '#'}
+    - {click: '%'}
+    - {click: '&'}
+    - {click: '*'}
+    - {click: '-'}
+    - {click: '+'}
+    - {click: '='}
+    - {click: '/'}
+    - {click: '￥'}
+    - {click: Qi_back, width: 15, key_back_color: fn_back, key_text_color: fn_text}
+    - {click: Qi_number, width: 15, key_back_color: fn_back, key_text_color: fn_text}
+    - {click: Qi_space, width: 40}
+    - {click: Qi_backspace, width: 15, key_back_color: fn_back, key_text_color: fn_text}
+    - {click: Return, width: 15, key_back_color: accent_back, key_text_color: accent_text}
+
+tool_bar:
+  button_spacing: 4
+  primary_button:
+    size: [60, -1]
+    background: {type: rectangle, corner_radius: 8, normal: 0x00000000, highlight: hilited_key_back_color}
+    foreground: {option_styles: ["全拼", "小鹤"], font_size: 16, padding: 6, normal: candidate_text_color}
+    action: Qi_scheme
+  buttons:
+    - {foreground: {style: "ic@keyboard_close", normal: candidate_text_color, padding: 9}, action: Hide}
+    - {foreground: {style: "ic@clipboard_outline", normal: candidate_text_color, padding: 9}, action: clipboard_window}
+    - {foreground: {style: "ic@emoticon_outline", normal: candidate_text_color, padding: 9}, action: liquid_keyboard_emoji}
+    - {foreground: {style: "ic@cog_outline", normal: candidate_text_color, padding: 9}, action: Settings}

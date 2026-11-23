@@ -1,5 +1,5 @@
-# C2: 一炁对雾凇拼音的调整：只保留小鹤双拼与全拼，加上切换逻辑（快捷键 / 菜单栏 / 键盘工具栏 / 方案选单）。
-# 这些调整通过 __patch 挂到对应文件上，*.custom.yaml 留给用户自己的修改，并在最后生效。
+# C2: 一炁对雾凇拼音的调整：只保留小鹤双拼与全拼，加上切换逻辑（快捷键 / 菜单栏 / 键盘工具栏 / 方案选单）；
+# 以及电脑端候选框外观。通过 __patch 挂到对应文件上，*.custom.yaml 仍可在最后生效。
 default:
   schema_list:
     - schema: double_pinyin_flypy
@@ -12,3 +12,66 @@ rime_ice:
   schema/name: 全拼
   "engine/processors/@before 0": lua_processor@*qi_switch
   "switches/@next": { name: qi_flypy, reset: 0, states: [ 全拼, 小鹤双拼 ] }
+squirrel:
+  style/color_scheme: yiqi_light
+  style/color_scheme_dark: yiqi_dark
+  style/candidate_list_layout: linear
+  style/text_orientation: horizontal
+  style/inline_preedit: true
+  style/inline_candidate: false
+  style/show_paging: false
+  style/candidate_format: "[label] [candidate] [comment]"
+  preset_color_schemes/yiqi_light:
+    name: 一炁浅色
+    font_face: "PingFang SC"
+    font_point: 18
+    label_font_face: "PingFang SC"
+    label_font_point: 16
+    comment_font_point: 14
+    corner_radius: 9
+    hilited_corner_radius: 7
+    border_height: 3
+    border_width: 4
+    surrounding_extra_expansion: 0
+    shadow_size: 3
+    spacing: 6
+    line_spacing: 6
+    color_space: srgb
+    back_color: 0xFFFFFF
+    border_color: 0xFFFFFF
+    candidate_text_color: 0x333333
+    label_color: 0x999999
+    comment_text_color: 0x999999
+    hilited_candidate_back_color: 0x7FB152
+    hilited_candidate_text_color: 0xFFFFFF
+    hilited_candidate_label_color: 0xFFFFFF
+    hilited_comment_text_color: 0xEEEEEE
+    text_color: 0x999999
+    hilited_text_color: 0x333333
+  preset_color_schemes/yiqi_dark:
+    name: 一炁深色
+    font_face: "PingFang SC"
+    font_point: 18
+    label_font_face: "PingFang SC"
+    label_font_point: 16
+    comment_font_point: 14
+    corner_radius: 9
+    hilited_corner_radius: 7
+    border_height: 3
+    border_width: 4
+    surrounding_extra_expansion: 0
+    shadow_size: 3
+    spacing: 6
+    line_spacing: 6
+    color_space: srgb
+    back_color: 0x2E2C2C
+    border_color: 0x2E2C2C
+    candidate_text_color: 0xE5E5E5
+    label_color: 0x938E8E
+    comment_text_color: 0x938E8E
+    hilited_candidate_back_color: 0x7FB152
+    hilited_candidate_text_color: 0xFFFFFF
+    hilited_candidate_label_color: 0xFFFFFF
+    hilited_comment_text_color: 0xEEEEEE
+    text_color: 0x938E8E
+    hilited_text_color: 0xE5E5E5

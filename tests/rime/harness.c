@@ -1,5 +1,5 @@
 // C2: 用真实的 Rime 引擎驱动输入方式，供 test_switch.py 校验小鹤双拼、全拼与切换。
-// C2: 每行一条命令：keys <按键序列> | schema | cands | commit | option <名> <0|1> | newsession
+// C2: 每行一条命令：keys <按键序列> | schema | cands | commit | option <名> <0|1> | deployconfig <文件> | newsession
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -49,6 +49,8 @@ int main(int argc, char **argv) {
       sscanf(line + 7, "%63s %d", name, &v);
       api->set_option(s, name, v);
       printf("ok\n");
+    } else if (strncmp(line, "deployconfig ", 13) == 0) {
+      printf("%s\n", api->deploy_config_file(line + 13, "config_version") ? "ok" : "fail");
     } else if (strcmp(line, "newsession") == 0) {
       s = api->create_session();
       printf("ok\n");

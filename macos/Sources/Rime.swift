@@ -79,11 +79,6 @@ enum Rime {
         return true
     }
 
-    static func openFolder() {
-        try? FileManager.default.createDirectory(at: userDir, withIntermediateDirectories: true)
-        NSWorkspace.shared.open(userDir)
-    }
-
     static func deploy() {
         guard FileManager.default.isExecutableFile(atPath: squirrel) else { return }
         let p = Process()

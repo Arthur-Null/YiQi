@@ -94,26 +94,43 @@ patch("app/src/main/java/com/osfans/trime/ui/main/MainFragment.kt",
       '                startActivity(android.content.Intent(requireContext(), com.osfans.trime.qi.QiSyncActivity::class.java))\n'
       '            }\n')
 
-# C2: 键盘左上角的「小鹤 / 全拼」按钮
-theme = T / "app/src/main/assets/shared/trime.yaml"
-s = theme.read_text()
-s = s.replace("preset_keys:\n", "preset_keys:\n"
-              "  Qi_scheme: {toggle: qi_flypy, send: SWITCH_CHARSET, states: [ 全拼, 小鹤 ]}\n"
-              "  menu_keyboard: { label: 菜单, send: FUNCTION, command: menu_keyboard }\n", 1)
-s += """
-tool_bar:
-  button_spacing: 5
-  primary_button:
-    size: [56, -1]
-    background: {type: rectangle, corner_radius: 8, normal: 0x00, highlight: hilited_candidate_button_color}
-    foreground: {option_styles: ["全拼", "小鹤"], font_size: 16, padding: 6, normal: candidate_text_color}
-    action: Qi_scheme
-  buttons:
-    - {foreground: {style: "ic@keyboard_close", normal: candidate_text_color}, action: Hide}
-    - {foreground: {style: "ic@clipboard"}, action: clipboard_window}
-    - {foreground: {style: "ic@dots_horizontal"}, action: menu_keyboard, long_press_action: Settings}
-"""
-theme.write_text(s)
+# C2: 设置首页只保留普通用户需要的条目，去掉 Rime 专用的方案、用户词典、配置
+for route, title, icon in [("SchemaList", "schemata", "ic_round_view_list_24"),
+                           ("UserDict", "user_dictionary", "ic_baseline_book_24"),
+                           ("Profile", "profile", "ic_baseline_snippet_folder_24")]:
+    patch("app/src/main/java/com/osfans/trime/ui/main/MainFragment.kt",
+          f"            addDestinationPreference(\n                R.string.{title},\n                R.drawable.{icon},\n"
+          f"                NavigationRoute.{route},\n            )\n", "")
+
+# C2: 一炁主题：简洁的键盘外观（浅色 / 深色跟随系统），左上角「小鹤 / 全拼」按钮
+ROOT = pathlib.Path(__file__).resolve().parent
+base = (T / "app/src/main/assets/shared/trime.yaml").read_text()
+
+
+def section(name, until):
+    a = base.index(f"\n{name}:\n") + 1
+    b = base.index(f"\n{until}:\n", a) + 1
+    return base[a:b]
+
+
+keys = section("preset_keys", "preset_keyboards").replace("preset_keys:\n", """preset_keys:
+  Qi_scheme: {toggle: qi_flypy, send: SWITCH_CHARSET, states: [ 全拼, 小鹤 ]}
+  Qi_lang: {toggle: ascii_mode, send: SWITCH_CHARSET, states: [ 中, 英 ]}
+  Qi_symbols: {label: 符, send: Eisu_toggle, select: symbols}
+  Qi_number: {label: '123', send: Eisu_toggle, select: number}
+  Qi_back: {label: 返回, send: Eisu_toggle, select: .default}
+  Qi_shift: {label: '⇧', send: Shift_L, shift_lock: ascii_long}
+  Qi_backspace: {label: '⌫', repeatable: true, send: BackSpace}
+  Qi_space: {label: 空格, functional: false, send: space}
+""", 1)
+theme = ((ROOT / "theme/yiqi.head.yaml").read_text() + "\n"
+         + section("liquid_keyboard", "android_keys") + section("android_keys", "preset_keys") + keys + "\n"
+         + (ROOT / "theme/yiqi.tail.yaml").read_text())
+(T / "app/src/main/assets/shared/yiqi.trime.yaml").write_text(theme)
+patch("app/src/main/java/com/osfans/trime/data/theme/ThemePrefs.kt",
+      "            SELECTED_THEME,\n            \"trime\",", "            SELECTED_THEME,\n            \"yiqi.trime\",")
+patch("app/src/main/java/com/osfans/trime/data/theme/ThemePrefs.kt",
+      "            FOLLOW_SYSTEM_DAY_NIGHT,\n            false,", "            FOLLOW_SYSTEM_DAY_NIGHT,\n            true,")
 
 # C6: 界面中统一称「一炁输入法」
 for rel, pairs in {
