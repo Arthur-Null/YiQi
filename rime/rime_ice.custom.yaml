@@ -1,0 +1,5 @@
+# C2: 输入方式名称与切换（Ctrl+Shift+1 / 菜单栏 / 键盘工具栏 / 方案选单）
+patch:
+  schema/name: 全拼
+  "engine/processors/@before 0": lua_processor@*qi_switch
+  "switches/@next": { name: qi_flypy, reset: 0, states: [ 全拼, 小鹤双拼 ] }

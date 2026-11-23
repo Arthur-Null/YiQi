@@ -1,0 +1,11 @@
+[Unit]
+Description=YiQi clipboard relay
+After=network-online.target
+
+[Service]
+ExecStart=/usr/local/bin/yiqi-relay serve --data /var/lib/yiqi-relay --listen 127.0.0.1:PORT
+Restart=always
+User=yiqi-relay
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,5 @@
+# C2: 只保留小鹤双拼与全拼两种输入方式
+patch:
+  schema_list:
+    - schema: double_pinyin_flypy
+    - schema: rime_ice

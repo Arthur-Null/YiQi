@@ -1,0 +1,17 @@
+#!/bin/bash
+user=$(/usr/bin/stat -f%Su /dev/console)
+home=$(/usr/bin/dscl . -read "/Users/$user" NFSHomeDirectory | awk '{print $2}')
+agents="$home/Library/LaunchAgents"
+/usr/bin/sudo -u "$user" /bin/mkdir -p "$agents"
+/usr/bin/sudo -u "$user" /usr/bin/tee "$agents/im.yiqi.app.plist" >/dev/null <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>Label</key><string>im.yiqi.app</string>
+<key>ProgramArguments</key><array><string>/Applications/YiQi.app/Contents/MacOS/YiQi</string></array>
+<key>RunAtLoad</key><true/>
+<key>LimitLoadToSessionType</key><string>Aqua</string>
+</dict></plist>
+PLIST
+/usr/bin/sudo -u "$user" /usr/bin/killall YiQi 2>/dev/null || true
+exit 0
