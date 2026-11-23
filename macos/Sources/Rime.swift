@@ -62,32 +62,40 @@ enum Rime {
 
     static var squirrelInstalled: Bool { FileManager.default.isExecutableFile(atPath: squirrel) }
 
-    private static func findSource() -> TISInputSource? {
-        let filter = [kTISPropertyInputSourceID as String: sourceID] as CFDictionary
+    private static func findSource(_ id: String) -> TISInputSource? {
+        let filter = [kTISPropertyInputSourceID as String: id] as CFDictionary
         return (TISCreateInputSourceList(filter, true)?.takeRetainedValue() as? [TISInputSource])?.first
     }
 
-    private static func isEnabled(_ src: TISInputSource) -> Bool {
-        guard let p = TISGetInputSourceProperty(src, kTISPropertyInputSourceIsEnabled) else { return false }
-        return CFBooleanGetValue(Unmanaged<CFBoolean>.fromOpaque(p).takeUnretainedValue())
+    // C1: 以系统的「已启用」列表为准；输入模式自身的启用属性在未添加时也可能显示为真
+    static var inputSourceEnabled: Bool {
+        guard let list = TISCreateInputSourceList(nil, false)?.takeRetainedValue() as? [TISInputSource] else { return false }
+        return list.contains { s in
+            guard let p = TISGetInputSourceProperty(s, kTISPropertyInputSourceID) else { return false }
+            return (Unmanaged<CFString>.fromOpaque(p).takeUnretainedValue() as String) == sourceID
+        }
     }
 
+    // C1: 登记并尝试启用；新版 macOS 只接受用户在系统设置里添加第三方输入法，此时由设置窗口引导。
     @discardableResult
     static func ensureInputSource(select: Bool) -> Bool {
         guard squirrelInstalled else { return false }
-        if findSource() == nil {
+        if findSource(sourceID) == nil {
             TISRegisterInputSource(URL(fileURLWithPath: "/Library/Input Methods/Squirrel.app") as CFURL)
         }
-        guard let src = findSource() else { return false }
-        if !isEnabled(src) {
-            TISEnableInputSource(src)
-            deploy()
+        if !inputSourceEnabled {
+            for id in ["im.rime.inputmethod.Squirrel", sourceID] {
+                if let s = findSource(id) { TISEnableInputSource(s) }
+            }
         }
-        if select { TISSelectInputSource(src) }
-        return isEnabled(src)
+        let ok = inputSourceEnabled
+        if ok && select, let s = findSource(sourceID) { TISSelectInputSource(s) }
+        return ok
     }
 
-    static var inputSourceEnabled: Bool { findSource().map(isEnabled) ?? false }
+    static func openInputSourceSettings() {
+        NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.Keyboard-Settings.extension")!)
+    }
 
     // C2: 切换快捷键由用户设置，保存为 Rime 按键写法（空格分隔的多种写法），qi_switch.lua 读取。
     private static let hotkeyFile = userDir.appendingPathComponent("qi_hotkey.txt")

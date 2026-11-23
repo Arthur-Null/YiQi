@@ -33,5 +33,10 @@ codesign --force --deep -s - "$APP"
 pkgbuild --quiet --root "$B/root" --install-location / --identifier im.yiqi.app --version "$VERSION" \
   --scripts "$ROOT/macos/pkg-scripts" "$B/yiqi.pkg"
 mkdir -p "$ROOT/dist"
-productbuild --quiet --package "$SQUIRREL_PKG" --package "$B/yiqi.pkg" "$ROOT/dist/YiQi-macOS.pkg"
+# C1: 输入法不需要注销即可添加，去掉鼠须管安装包里的「安装后注销」要求
+rm -rf "$B/squirrel-expanded"
+pkgutil --expand "$SQUIRREL_PKG" "$B/squirrel-expanded"
+sed -i '' 's/postinstall-action="logout"/postinstall-action="none"/' "$B/squirrel-expanded/PackageInfo"
+pkgutil --flatten "$B/squirrel-expanded" "$B/Squirrel.pkg"
+productbuild --quiet --package "$B/Squirrel.pkg" --package "$B/yiqi.pkg" "$ROOT/dist/YiQi-macOS.pkg"
 echo "$ROOT/dist/YiQi-macOS.pkg"

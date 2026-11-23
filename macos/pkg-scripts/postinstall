@@ -14,4 +14,9 @@ agents="$home/Library/LaunchAgents"
 </dict></plist>
 PLIST
 /usr/bin/sudo -u "$user" /usr/bin/killall YiQi 2>/dev/null || true
+# C1: 装完立即在用户会话里启动一炁，引导把输入法添加到系统
+uid=$(/usr/bin/id -u "$user")
+/bin/launchctl bootout "gui/$uid/im.yiqi.app" 2>/dev/null || true
+/bin/launchctl bootstrap "gui/$uid" "$agents/im.yiqi.app.plist" 2>/dev/null || \
+  /bin/launchctl asuser "$uid" /usr/bin/sudo -u "$user" /usr/bin/open /Applications/YiQi.app
 exit 0

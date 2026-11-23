@@ -26,7 +26,14 @@ final class Model: ObservableObject {
             let s = Rime.scheme
             if self.scheme != s { self.scheme = s }
             let ready = Rime.inputSourceEnabled
-            if self.inputSourceReady != ready { self.inputSourceReady = ready }
+            if self.inputSourceReady != ready {
+                self.inputSourceReady = ready
+                // C1: 用户刚在系统设置里添加好，立即切换过去并部署词库
+                if ready {
+                    Rime.ensureInputSource(select: true)
+                    Rime.deploy()
+                }
+            }
         }
     }
 
@@ -136,16 +143,13 @@ struct SettingsView: View {
                     if !Rime.squirrelInstalled {
                         Text("还没有装好输入法本体，请重新打开安装包。").foregroundStyle(.red)
                     } else if !model.inputSourceReady {
-                        // C1: 输入法未出现在系统输入法列表时，给出可操作的补救
+                        // C1: 新版 macOS 需要用户在系统设置里添加一次输入法，这里一步步引导
                         VStack(alignment: .leading, spacing: 6) {
-                            Text("一炁还没有在系统里启用。").foregroundStyle(.red)
-                            note("先点「自动启用」；如果没有反应，点「打开键盘设置」，在「输入法」里点 +，选「简体中文」→「鼠须管」添加。")
-                            HStack {
-                                Button("自动启用") { Rime.ensureInputSource(select: true) }
-                                Button("打开键盘设置") {
-                                    NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.Keyboard-Settings.extension")!)
-                                }
-                            }
+                            Text("还差一步：把一炁添加到系统输入法").font(.headline).foregroundStyle(.red)
+                            Text("1. 点下面的「打开输入法设置」\n2. 在「文字输入」的「输入法」一行点「编辑…」，再点左下角的 +\n3. 左边选「简体中文」，右边选「鼠须管」，点「添加」")
+                                .font(.callout).fixedSize(horizontal: false, vertical: true)
+                            note("添加好后这里会自动消失，一炁会直接切换过去，不需要注销或重启。")
+                            Button("打开输入法设置") { Rime.openInputSourceSettings() }
                         }
                         Divider()
                     }
