@@ -42,4 +42,3 @@ For a technical requirement, ask why and record only the real need behind it. Fo
 - **C7**：剪贴板同步使用的服务器地址必须可由用户自行配置。原因：用户后续可能开源，让别人使用他们自己的服务器。
 
 ## Temporary
-- **T2**：`yiqi.yuchen.win` 还没有指向服务器上的一炁中转；需要你在 Cloudflare 隧道里把它转到 dmit 上的 `http://localhost:40566`。
