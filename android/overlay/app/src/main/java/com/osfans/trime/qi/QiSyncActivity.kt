@@ -55,6 +55,32 @@ class QiSyncActivity : AppCompatActivity() {
         title = "一炁输入法"
         val col = vertical().apply { setPadding(dp(20), dp(16), dp(20), dp(24)) }
 
+        val update = vertical().apply { visibility = View.GONE }
+        val updateText = text("", 16f, true)
+        val updateButton = button("下载并安装") {}
+        update.addView(updateText)
+        update.addView(updateButton)
+        col.addView(update)
+        lifecycleScope.launch {
+            val r = withContext(Dispatchers.IO) { QiUpdate.check() } ?: return@launch
+            updateText.text = "有新版本 ${r.version}（当前 ${QiUpdate.current}）"
+            update.visibility = View.VISIBLE
+            updateButton.setOnClickListener {
+                updateButton.isEnabled = false
+                updateText.text = "正在下载 ${r.version}…"
+                lifecycleScope.launch {
+                    val apk = withContext(Dispatchers.IO) { QiUpdate.download(this@QiSyncActivity, r) }
+                    updateButton.isEnabled = true
+                    if (apk == null) {
+                        updateText.text = "下载失败，请稍后重试"
+                    } else {
+                        updateText.text = "有新版本 ${r.version}，请在弹出的窗口里点「更新」"
+                        QiUpdate.install(this@QiSyncActivity, apk)
+                    }
+                }
+            }
+        }
+
         // C2: 界面可见可点的输入方式切换（与键盘工具栏按钮、电脑端共用同一记录）
         col.addView(text("输入方式", 18f, true))
         val group = RadioGroup(this)
@@ -112,6 +138,8 @@ class QiSyncActivity : AppCompatActivity() {
                 13f,
             ).apply { setPadding(0, dp(16), 0, 0) },
         )
+
+        col.addView(text("版本 ${QiUpdate.current}", 12f))
 
         val scroll = ScrollView(this).apply { addView(col) }
         ViewCompat.setOnApplyWindowInsetsListener(scroll) { v, insets ->

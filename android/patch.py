@@ -4,6 +4,7 @@ import pathlib
 import sys
 
 T = pathlib.Path(sys.argv[1])
+VERSION = sys.argv[2]
 
 
 def patch(rel, old, new, count=1):
@@ -17,6 +18,9 @@ def patch(rel, old, new, count=1):
 patch("app/build.gradle.kts", '    id("com.osfans.trime.opencc-data")\n', "")
 patch("app/build.gradle.kts", 'applicationId = "com.osfans.trime"', 'applicationId = "im.yiqi.input"')
 patch("app/build.gradle.kts", "minSdk = 21", "minSdk = 24")
+major, minor, micro = (int(x) for x in VERSION.split("."))
+patch("app/build.gradle.kts", "versionCode = 20261101", f"versionCode = {20261101 + major * 10000 + minor * 100 + micro}")
+patch("app/build.gradle.kts", 'versionName = "3.3.13"', f'versionName = "{VERSION}"')
 patch("app/build.gradle.kts", 'resValue("string", "trime_app_name", "@string/app_name_release")',
       'resValue("string", "trime_app_name", "一炁输入法")')
 patch("app/build.gradle.kts", "    implementation(libs.kotlinx.coroutines)\n",
@@ -68,10 +72,11 @@ patch("app/src/main/java/com/osfans/trime/data/prefs/AppPrefs.kt",
       "            CLIPBOARD_SUGGESTION_TIMEOUT,\n            20,\n",
       "            CLIPBOARD_SUGGESTION_TIMEOUT,\n            100,\n")
 
-# C4: 经公网服务器中转需要联网
+# C4: 经公网服务器中转需要联网；在线更新需要安装新版的权限
 patch("app/src/main/AndroidManifest.xml",
       "    <application\n",
-      '    <uses-permission android:name="android.permission.INTERNET" />\n\n    <application\n')
+      '    <uses-permission android:name="android.permission.INTERNET" />\n'
+      '    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />\n\n    <application\n')
 
 # C2, C3: 设置入口
 patch("app/src/main/AndroidManifest.xml",
@@ -83,7 +88,7 @@ patch("app/src/main/java/com/osfans/trime/ui/main/MainFragment.kt",
       "        preferenceScreen = preferenceManager.createPreferenceScreen(requireContext()).apply {\n"
       '            addPreference(\n'
       '                title = "输入方式与剪贴板同步",\n'
-      '                summary = "小鹤双拼 / 全拼切换；剪贴板同步与添加设备",\n'
+      '                summary = "小鹤双拼 / 全拼切换；剪贴板同步；检查更新",\n'
       '                icon = R.drawable.ic_clipboard_24,\n'
       '            ) {\n'
       '                startActivity(android.content.Intent(requireContext(), com.osfans.trime.qi.QiSyncActivity::class.java))\n'

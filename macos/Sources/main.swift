@@ -22,6 +22,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         item.menu = menu
         refreshTitle()
         observers.append(model.$scheme.sink { [weak self] _ in DispatchQueue.main.async { self?.refreshTitle() } })
+        observers.append(model.$update.sink { [weak self] _ in DispatchQueue.main.async { self?.refreshTitle() } })
         if first || !ready || model.pairCode == nil {
             FileManager.default.createFile(atPath: Store.dir.appendingPathComponent("welcomed").path, contents: nil)
             openSettings()
@@ -53,13 +54,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     func refreshTitle() {
-        item.button?.title = model.scheme.short
+        item.button?.title = model.scheme.short + (model.update == nil ? "" : "↑")
         item.button?.toolTip = "一炁输入法：\(model.scheme.title)（\(model.hotkey.label) 切换）"
     }
 
     func menuNeedsUpdate(_ menu: NSMenu) {
         model.scheme = Rime.scheme
         menu.removeAllItems()
+        if let u = model.update {
+            let up = NSMenuItem(title: "有新版本 \(u.version)，点此更新…", action: #selector(updateAction), keyEquivalent: "")
+            up.target = self
+            menu.addItem(up)
+            menu.addItem(.separator())
+        }
         let head = NSMenuItem(title: "输入方式（\(model.hotkey.label) 切换）", action: nil, keyEquivalent: "")
         head.isEnabled = false
         menu.addItem(head)
@@ -91,6 +98,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc func openSettingsAction() { openSettings() }
+
+    @objc func updateAction() {
+        model.installUpdate()
+        openSettings()
+    }
 
     func openSettings() {
         if window == nil {

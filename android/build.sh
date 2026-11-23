@@ -35,7 +35,7 @@ echo | "$ROOT/build/rime_harness" "$ROOT/build/rime-data" "$PRE" "$PRE/build" de
 mkdir -p "$SHARED/build"
 cp "$PRE"/build/*.bin "$SHARED/build/"
 
-python3 "$ROOT/android/patch.py" "$T"
+python3 "$ROOT/android/patch.py" "$T" "$(cat "$ROOT/VERSION")"
 rsync -a "$ROOT/android/overlay/" "$T/"
 
 SIGN="$ROOT/android/signing"
@@ -48,7 +48,7 @@ printf 'storeFile=%s\nstorePassword=qi-input\nkeyAlias=qi\nkeyPassword=qi-input\
 
 cd "$T"
 ./gradlew --no-daemon -PbuildABI=arm64-v8a -PkeystoreProperties="$B/keystore.properties" \
-  -PbuildVersionName=qi-1.0 assembleRelease
+  -PbuildVersionName="$(cat "$ROOT/VERSION")" assembleRelease
 mkdir -p "$ROOT/dist"
 cp "$(ls app/build/outputs/apk/release/*.apk | head -1)" "$ROOT/dist/YiQi-Android.apk"
 echo "$ROOT/dist/YiQi-Android.apk"

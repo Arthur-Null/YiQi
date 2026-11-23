@@ -30,6 +30,7 @@ For a technical requirement, ask why and record only the real need behind it. Fo
 - 一套覆盖日常五类设备（macOS、Windows、Linux、Android、iOS）的中文拼音输入法，词库与出词体验达到雾凇拼音级别的顺手程度。
 - 支持小鹤双拼与全拼，在家人共用电脑或借给他人打字时，能够通过界面或快捷键随时顺畅切换。
 - 提供类似微信输入法的多端文本剪贴板同步体验：在一台设备复制文本后，另一台打开了输入法的设备可直接粘贴使用，手机端还可在候选栏中直接看到并点选。
+- 应用能在线检查新版本并一键更新，不必每次手动下载安装包。
 
 ## Constraints
 

@@ -11,7 +11,7 @@ APP="$B/root/Applications/YiQi.app"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 swiftc -O -target arm64-apple-macos13 -o "$APP/Contents/MacOS/YiQi" "$ROOT"/macos/Sources/*.swift
 cp -R "$ROOT/build/rime-data" "$APP/Contents/Resources/rime-data"
-VERSION=1.0.$(date +%Y%m%d%H%M)
+VERSION=$(cat "$ROOT/VERSION")
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">

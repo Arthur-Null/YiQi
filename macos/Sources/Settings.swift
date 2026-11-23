@@ -15,11 +15,15 @@ final class Model: ObservableObject {
     @Published var hotkey: Hotkey = Rime.hotkey
     @Published var recording = false
     @Published var inputSourceReady = Rime.inputSourceEnabled
+    @Published var update: Updater.Release?
+    @Published var updateMessage: String?
     let sync = ClipboardSync()
     private var monitor: Any?
 
     init() {
         sync.onStatus = { [weak self] s in self?.status = s }
+        checkUpdate()
+        Timer.scheduledTimer(withTimeInterval: 6 * 3600, repeats: true) { [weak self] _ in self?.checkUpdate() }
         sync.configure(pairCode.flatMap(QiKey.init(pairCode:)))
         Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             guard let self else { return }
@@ -38,6 +42,18 @@ final class Model: ObservableObject {
     }
 
     var serverHost: String? { pairCode.flatMap(QiKey.init(pairCode:))?.server.host }
+
+    func checkUpdate() {
+        Updater.check { [weak self] r in self?.update = r }
+    }
+
+    func installUpdate() {
+        guard let r = update else { return }
+        updateMessage = "正在下载 \(r.version)…"
+        Updater.install(r) { [weak self] err in
+            self?.updateMessage = err ?? "安装程序已打开，按提示完成安装即可（需要输入一次电脑密码）。"
+        }
+    }
 
     func choose(_ s: Scheme) {
         Rime.request(s)
@@ -138,6 +154,17 @@ struct SettingsView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
+            if let u = model.update {
+                GroupBox {
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Text("有新版本 \(u.version)（当前 \(Updater.current)）").font(.headline)
+                            Button("下载并安装") { model.installUpdate() }
+                        }
+                        if let m = model.updateMessage { note(m) }
+                    }.padding(6)
+                }
+            }
             GroupBox {
                 VStack(alignment: .leading, spacing: 10) {
                     if !Rime.squirrelInstalled {
@@ -219,6 +246,9 @@ struct SettingsView: View {
                     note("复制的文字会在本机加密后，经你的服务器同步到同组的其他设备，在那里直接粘贴即可。")
                 }.padding(6)
             } label: { Text("剪贴板同步").font(.headline) }
+        }
+        .overlay(alignment: .bottomTrailing) {
+            Text("版本 \(Updater.current)").font(.caption).foregroundStyle(.tertiary).padding(.trailing, 24).padding(.bottom, 4)
         }
         .padding(20)
         .frame(width: 560)
