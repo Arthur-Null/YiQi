@@ -12,6 +12,13 @@ if [ -d "/Library/Input Methods/Squirrel.app" ] && /usr/sbin/pkgutil --pkg-info 
   /usr/sbin/pkgutil --forget im.rime.inputmethod.Squirrel >/dev/null 2>&1 || true
 fi
 
+# C1: 万一新版仍被放进了 YiQiInput.localized，把它移回标准位置
+if [ -d "/Library/Input Methods/YiQiInput.localized/YiQiInput.app" ]; then
+  /bin/rm -rf "/Library/Input Methods/YiQiInput.app"
+  /bin/mv "/Library/Input Methods/YiQiInput.localized/YiQiInput.app" "/Library/Input Methods/YiQiInput.app"
+  /bin/rm -rf "/Library/Input Methods/YiQiInput.localized"
+fi
+
 # C1: 让新版输入法在下次使用时加载，并在用户会话里登记到系统
 /usr/bin/sudo -u "$user" /usr/bin/killall YiQiInput 2>/dev/null || true
 /bin/launchctl asuser "$uid" /usr/bin/sudo -u "$user" "$IM" --register-input-source >/dev/null 2>&1 || true
