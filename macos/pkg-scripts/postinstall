@@ -12,11 +12,13 @@ if [ -d "/Library/Input Methods/Squirrel.app" ] && /usr/sbin/pkgutil --pkg-info 
   /usr/sbin/pkgutil --forget im.rime.inputmethod.Squirrel >/dev/null 2>&1 || true
 fi
 
-# C1: 万一新版仍被放进了 YiQiInput.localized，把它移回标准位置
-if [ -d "/Library/Input Methods/YiQiInput.localized/YiQiInput.app" ]; then
-  /bin/rm -rf "/Library/Input Methods/YiQiInput.app"
-  /bin/mv "/Library/Input Methods/YiQiInput.localized/YiQiInput.app" "/Library/Input Methods/YiQiInput.app"
-  /bin/rm -rf "/Library/Input Methods/YiQiInput.localized"
+# C1: 把随安装包带来的输入法本体复制到系统输入法目录（先清掉旧版和任何被挪开的副本）
+STAGED="/Library/Application Support/YiQi/YiQiInput.app"
+if [ -d "$STAGED" ]; then
+  /usr/bin/sudo -u "$user" /usr/bin/killall YiQiInput 2>/dev/null || true
+  /bin/rm -rf "/Library/Input Methods/YiQiInput.app" "/Library/Input Methods/YiQiInput.localized"
+  /usr/bin/ditto "$STAGED" "/Library/Input Methods/YiQiInput.app"
+  /bin/rm -rf "$STAGED"
 fi
 
 # C1: 让新版输入法在下次使用时加载，并在用户会话里登记到系统

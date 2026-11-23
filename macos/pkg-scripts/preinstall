@@ -1,7 +1,4 @@
 #!/bin/bash
-# C1: 先移除已装的一炁输入法本体。内部标识不同的同名程序不会被直接覆盖，
-# 系统安装程序会把新版放到旁边的 YiQiInput.localized 里，导致系统找不到新版。
-user=$(/usr/bin/stat -f%Su /dev/console)
-/usr/bin/sudo -u "$user" /usr/bin/killall YiQiInput 2>/dev/null || true
-/bin/rm -rf "/Library/Input Methods/YiQiInput.app" "/Library/Input Methods/YiQiInput.localized"
+# C1: 清掉上次安装可能残留的待复制副本，确保这次复制的是新版
+/bin/rm -rf "/Library/Application Support/YiQi/YiQiInput.app"
 exit 0

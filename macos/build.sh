@@ -4,9 +4,10 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 B="$ROOT/build/macos"
 VERSION=$(cat "$ROOT/VERSION")
 
-rm -rf "$B/root" "$B/yiqi.pkg" && mkdir -p "$B/root/Applications" "$B/root/Library/Input Methods"
+rm -rf "$B/root" "$B/yiqi.pkg" && mkdir -p "$B/root/Applications" "$B/root/Library/Application Support/YiQi"
 "$ROOT/macos/inputmethod/build.sh" >/dev/null
-cp -R "$B/inputmethod/YiQiInput.app" "$B/root/Library/Input Methods/"
+# C1: 输入法本体先装到一炁自己的目录，由安装脚本复制到系统输入法目录，避免系统安装程序替换同名程序时另放位置
+cp -R "$B/inputmethod/YiQiInput.app" "$B/root/Library/Application Support/YiQi/"
 
 APP="$B/root/Applications/YiQi.app"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
