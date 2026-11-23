@@ -3,53 +3,53 @@ preset_keyboards:
     name: 一炁 26 键
     ascii_mode: 0
     width: 10
-    height: 46
+    height: 40
     keys:
-    - {click: q, long_click: '1'}
-    - {click: w, long_click: '2'}
-    - {click: e, long_click: '3'}
-    - {click: r, long_click: '4'}
-    - {click: t, long_click: '5'}
-    - {click: y, long_click: '6'}
-    - {click: u, long_click: '7'}
-    - {click: i, long_click: '8'}
-    - {click: o, long_click: '9'}
-    - {click: p, long_click: '0'}
+    - {click: q, label: Q, long_click: '1'}
+    - {click: w, label: W, long_click: '2'}
+    - {click: e, label: E, long_click: '3'}
+    - {click: r, label: R, long_click: '4'}
+    - {click: t, label: T, long_click: '5'}
+    - {click: y, label: Y, long_click: '6'}
+    - {click: u, label: U, long_click: '7'}
+    - {click: i, label: I, long_click: '8'}
+    - {click: o, label: O, long_click: '9'}
+    - {click: p, label: P, long_click: '0'}
     - {width: 5}
-    - {click: a, long_click: '@'}
-    - {click: s, long_click: '#'}
-    - {click: d, long_click: '%'}
-    - {click: f, long_click: '&'}
-    - {click: g, long_click: '*'}
-    - {click: h, long_click: '-'}
-    - {click: j, long_click: '+'}
-    - {click: k, long_click: '('}
-    - {click: l, long_click: ')'}
+    - {click: a, label: A, long_click: '-'}
+    - {click: s, label: S, long_click: '/'}
+    - {click: d, label: D, long_click: ':'}
+    - {click: f, label: F, long_click: ';'}
+    - {click: g, label: G, long_click: '('}
+    - {click: h, label: H, long_click: ')'}
+    - {click: j, label: J, long_click: '~'}
+    - {click: k, label: K, long_click: '“'}
+    - {click: l, label: L, long_click: '”'}
     - {width: 5}
     - {click: Qi_shift, width: 14, key_back_color: fn_back, key_text_color: fn_text}
     - {width: 1}
-    - {click: z, long_click: '!'}
-    - {click: x, long_click: '?'}
-    - {click: c, long_click: ':'}
-    - {click: v, long_click: ';'}
-    - {click: b, long_click: '/'}
-    - {click: n, long_click: '~'}
-    - {click: m, long_click: '_'}
+    - {click: z, label: Z, long_click: '@'}
+    - {click: x, label: X, long_click: '.'}
+    - {click: c, label: C, long_click: '#'}
+    - {click: v, label: V, long_click: '、'}
+    - {click: b, label: B, long_click: '?'}
+    - {click: n, label: N, long_click: '!'}
+    - {click: m, label: M, long_click: '…'}
     - {width: 1}
     - {click: Qi_backspace, width: 14, key_back_color: fn_back, key_text_color: fn_text}
-    - {click: Qi_symbols, width: 12, key_back_color: fn_back, key_text_color: fn_text}
-    - {click: Qi_number, width: 12, key_back_color: fn_back, key_text_color: fn_text}
+    - {click: Qi_symbols, width: 12, key_text_size: 18, key_back_color: fn_back, key_text_color: fn_text}
+    - {click: Qi_number, width: 12, key_text_size: 17, key_back_color: fn_back, key_text_color: fn_text}
     - {click: ',', label: '，', width: 9}
     - {click: space, width: 34}
     - {click: '.', label: '。', width: 9}
-    - {click: Qi_lang, width: 9, key_back_color: fn_back, key_text_color: fn_text}
+    - {click: Qi_lang, width: 9, key_text_size: 18, key_back_color: fn_back, key_text_color: fn_text}
     - {click: Return, width: 15, key_back_color: accent_back, key_text_color: accent_text}
 
   number:
     name: 一炁数字
     ascii_mode: 1
     width: 20
-    height: 46
+    height: 40
     keys:
     - {click: '+', width: 16, key_back_color: fn_back, key_text_color: fn_text}
     - {click: '1', width: 22.6}
@@ -76,7 +76,7 @@ preset_keyboards:
     name: 一炁符号
     ascii_mode: 0
     width: 10
-    height: 46
+    height: 40
     keys:
     - {click: '，', ascii: ','}
     - {click: '。', ascii: '.'}
@@ -122,7 +122,7 @@ tool_bar:
     foreground: {option_styles: ["全拼", "小鹤"], font_size: 16, padding: 6, normal: candidate_text_color}
     action: Qi_scheme
   buttons:
-    - {foreground: {style: "ic@keyboard_close", normal: candidate_text_color, padding: 9}, action: Hide}
-    - {foreground: {style: "ic@clipboard_outline", normal: candidate_text_color, padding: 9}, action: clipboard_window}
-    - {foreground: {style: "ic@emoticon_outline", normal: candidate_text_color, padding: 9}, action: liquid_keyboard_emoji}
-    - {foreground: {style: "ic@cog_outline", normal: candidate_text_color, padding: 9}, action: Settings}
+    - {background: {type: circle, normal: fn_back, highlight: hilited_key_back_color}, foreground: {style: "ic@chevron_down", normal: candidate_text_color, padding: 7}, action: Hide}
+    - {background: {type: circle, normal: fn_back, highlight: hilited_key_back_color}, foreground: {style: "ic@clipboard_outline", normal: candidate_text_color, padding: 8}, action: clipboard_window}
+    - {background: {type: circle, normal: fn_back, highlight: hilited_key_back_color}, foreground: {style: "ic@emoticon_outline", normal: candidate_text_color, padding: 8}, action: Qi_emoji}
+    - {background: {type: circle, normal: fn_back, highlight: hilited_key_back_color}, foreground: {style: "ic@cog_outline", normal: candidate_text_color, padding: 8}, action: Settings}

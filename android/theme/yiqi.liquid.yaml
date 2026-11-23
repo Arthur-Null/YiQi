@@ -1,0 +1,15 @@
+liquid_keyboard:
+  row: 5
+  row_land: 4
+  key_height: 46
+  key_height_land: 40
+  single_width: 46
+  vertical_gap: 2
+  margin_x: 1
+  fixed_key_bar:
+    position: bottom
+    keys:
+      - Qi_lq_exit
+      - Qi_space
+      - Qi_backspace
+  keyboards: [emoji, history, cn, yanwenzi, math, emoji_full]

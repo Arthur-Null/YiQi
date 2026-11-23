@@ -44,8 +44,19 @@ enum Rime {
         let marker = Store.dir.appendingPathComponent("rime-cleaned-\(version)")
         if FileManager.default.fileExists(atPath: marker.path) { return }
         cleanUp(userDir: userDir, shared: sharedDir)
+        ensureUserCopies()
         deploy()
         FileManager.default.createFile(atPath: marker.path, contents: nil)
+    }
+
+    // C1: 输入法附带的脚本插件只在用户目录里找这些数据文件（农历），补一份过去
+    static func ensureUserCopies() {
+        for rel in ["lua/lunar.db"] {
+            let dst = userDir.appendingPathComponent(rel)
+            if FileManager.default.fileExists(atPath: dst.path) { continue }
+            try? FileManager.default.createDirectory(at: dst.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try? FileManager.default.copyItem(at: sharedDir.appendingPathComponent(rel), to: dst)
+        }
     }
 
     @discardableResult

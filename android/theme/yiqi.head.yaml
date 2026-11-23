@@ -7,28 +7,28 @@ style:
   candidate_padding: 10
   candidate_spacing: 0.0
   candidate_text_size: 20
-  candidate_view_height: 34
+  candidate_view_height: 36
   candidate_corner_radius: 6
   comment_height: 12
   comment_position: right
   comment_text_size: 12
   horizontal_gap: 6
-  vertical_gap: 10
+  vertical_gap: 8
   keyboard_padding: 4
   keyboard_padding_bottom: 4
   keyboard_padding_land: 60
-  key_height: 46
+  key_height: 40
   key_long_text_size: 16
   key_text_size: 22
   key_width: 10.0
   label_text_size: 16
-  symbol_text_size: 9
+  symbol_text_size: 10
   round_corner: 6
   shadow_radius: 0.0
   key_border: 0
   key_press_offset_x: 0
   key_press_offset_y: 0
-  keyboard_height: 236
+  keyboard_height: 206
   keyboard_height_land: 190
   popup_text_size: 26
   reset_ascii_mode_on_focus_change: false
@@ -63,6 +63,7 @@ window:
 
 fallback_colors:
   candidate_text_color: text_color
+  liquid_key_back_color: key_back_color
 
 preset_color_schemes:
   default:
@@ -86,11 +87,12 @@ preset_color_schemes:
     label_color: 0x8A8A8E
     key_back_color: 0xFFFFFF
     key_text_color: 0x1F1F1F
-    key_symbol_color: 0x00FFFFFF
+    key_symbol_color: 0x8A8A8E
+    liquid_key_back_color: 0x00EDEEF2
     key_border_color: 0xFFFFFF
     hilited_key_back_color: 0xD3D6DC
     hilited_key_text_color: 0x1F1F1F
-    hilited_key_symbol_color: 0x00FFFFFF
+    hilited_key_symbol_color: 0x8A8A8E
     off_key_back_color: 0xFFFFFF
     off_key_text_color: 0x1F1F1F
     on_key_back_color: 0xD3D6DC
@@ -127,11 +129,12 @@ preset_color_schemes:
     label_color: 0x8E8E93
     key_back_color: 0x3A3A3C
     key_text_color: 0xF2F2F2
-    key_symbol_color: 0x003A3A3C
+    key_symbol_color: 0x9A9A9F
+    liquid_key_back_color: 0x001C1C1E
     key_border_color: 0x3A3A3C
     hilited_key_back_color: 0x2A2A2C
     hilited_key_text_color: 0xF2F2F2
-    hilited_key_symbol_color: 0x003A3A3C
+    hilited_key_symbol_color: 0x9A9A9F
     off_key_back_color: 0x3A3A3C
     off_key_text_color: 0xF2F2F2
     on_key_back_color: 0x2A2A2C

@@ -122,11 +122,25 @@ keys = section("preset_keys", "preset_keyboards").replace("preset_keys:\n", """p
   Qi_shift: {label: '⇧', send: Shift_L, shift_lock: ascii_long}
   Qi_backspace: {label: '⌫', repeatable: true, send: BackSpace}
   Qi_space: {label: 空格, functional: false, send: space}
+  Qi_emoji: {label: 表情, send: FUNCTION, command: liquid_keyboard, option: "表情"}
+  Qi_lq_exit: {label: '←', send: FUNCTION, command: liquid_keyboard, option: "-1"}
 """, 1)
+liquid = section("liquid_keyboard", "android_keys")
+liquid = (ROOT / "theme/yiqi.liquid.yaml").read_text() + liquid[liquid.index("\n  tabs:\n") + 1:]
+liquid = liquid.replace("  emoji:\n    type: SINGLE\n", "  emoji:\n    type: SINGLE\n    name: 表情\n", 1)
+liquid = liquid.replace("    name: 全emoji\n", "    name: 全部表情\n", 1)
 theme = ((ROOT / "theme/yiqi.head.yaml").read_text() + "\n"
-         + section("liquid_keyboard", "android_keys") + section("android_keys", "preset_keys") + keys + "\n"
+         + liquid + section("android_keys", "preset_keys") + keys + "\n"
          + (ROOT / "theme/yiqi.tail.yaml").read_text())
 (T / "app/src/main/assets/shared/yiqi.trime.yaml").write_text(theme)
+# C2: 表情面板：格子无底色，列数按屏幕宽度均分，右侧不留白
+patch("app/src/main/java/com/osfans/trime/ime/symbol/LiquidItemUi.kt",
+      '            "key_back_color",\n', '            "liquid_key_back_color",\n', count=2)
+patch("app/src/main/java/com/osfans/trime/ime/symbol/LiquidAdapter.kt",
+      "                width = context.dp(scope.theme.liquidKeyboard.singleWidth)\n",
+      "                val total = parent.width.takeIf { it > 0 } ?: context.resources.displayMetrics.widthPixels\n"
+      "                val cols = (total / context.dp(scope.theme.liquidKeyboard.singleWidth)).coerceAtLeast(1)\n"
+      "                width = total / cols - 2 * context.dp(scope.theme.liquidKeyboard.marginX.toInt())\n")
 patch("app/src/main/java/com/osfans/trime/data/theme/ThemePrefs.kt",
       "            SELECTED_THEME,\n            \"trime\",", "            SELECTED_THEME,\n            \"yiqi.trime\",")
 patch("app/src/main/java/com/osfans/trime/data/theme/ThemePrefs.kt",

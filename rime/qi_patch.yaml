@@ -1,6 +1,7 @@
 # C2: 一炁对雾凇拼音的调整：只保留小鹤双拼与全拼，加上切换逻辑（快捷键 / 菜单栏 / 键盘工具栏 / 方案选单）；
 # 以及电脑端候选框外观。通过 __patch 挂到对应文件上，*.custom.yaml 仍可在最后生效。
 default:
+  menu/page_size: 7
   schema_list:
     - schema: double_pinyin_flypy
     - schema: rime_ice
@@ -24,14 +25,14 @@ squirrel:
   preset_color_schemes/yiqi_light:
     name: 一炁浅色
     font_face: "PingFang SC"
-    font_point: 18
+    font_point: 15
     label_font_face: "PingFang SC"
-    label_font_point: 16
-    comment_font_point: 14
-    corner_radius: 9
-    hilited_corner_radius: 7
-    border_height: 3
-    border_width: 4
+    label_font_point: 13
+    comment_font_point: 12
+    corner_radius: 8
+    hilited_corner_radius: 6
+    border_height: 1
+    border_width: 3
     surrounding_extra_expansion: 0
     shadow_size: 3
     spacing: 6
@@ -51,14 +52,14 @@ squirrel:
   preset_color_schemes/yiqi_dark:
     name: 一炁深色
     font_face: "PingFang SC"
-    font_point: 18
+    font_point: 15
     label_font_face: "PingFang SC"
-    label_font_point: 16
-    comment_font_point: 14
-    corner_radius: 9
-    hilited_corner_radius: 7
-    border_height: 3
-    border_width: 4
+    label_font_point: 13
+    comment_font_point: 12
+    corner_radius: 8
+    hilited_corner_radius: 6
+    border_height: 1
+    border_width: 3
     surrounding_extra_expansion: 0
     shadow_size: 3
     spacing: 6
