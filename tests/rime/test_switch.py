@@ -121,5 +121,38 @@ class SwitchTest(unittest.TestCase):
         self.assertEqual(self.r.cmd("schema"), QUANPIN)
 
 
+
+class UserCustomTest(unittest.TestCase):
+    # C2: 用户自己的 *.custom.yaml 在一炁的调整之后生效，且不会让小鹤双拼 / 全拼与切换失效。
+    def test_user_custom_yaml_keeps_qi_behavior(self):
+        build()
+        user = tempfile.mkdtemp(prefix="qi-rime-custom-")
+        try:
+            with open(os.path.join(user, "default.custom.yaml"), "w") as f:
+                f.write("patch:\n  menu/page_size: 7\n")
+            with open(os.path.join(user, "double_pinyin_flypy.custom.yaml"), "w") as f:
+                f.write("patch:\n  schema/name: 我的小鹤\n")
+            Rime(user, deploy=True).close()
+            with open(os.path.join(user, "build", "double_pinyin_flypy.schema.yaml")) as f:
+                compiled = f.read()
+            self.assertIn("我的小鹤", compiled)
+            self.assertIn("qi_switch", compiled)
+            with open(os.path.join(user, "build", "default.yaml")) as f:
+                self.assertIn("page_size: 7", f.read())
+            r = Rime(user)
+            r.cmd("keys {Escape}")
+            self.assertEqual(r.cmd("schema"), FLYPY)
+            r.cmd("keys nihc")
+            cands = r.cmd("cands").split("|")
+            self.assertEqual(cands[0], "你好")
+            self.assertLessEqual(len(cands), 7)
+            r.cmd("keys {Escape}")
+            r.cmd("keys {Control+Shift+1}")
+            self.assertEqual(r.cmd("schema"), QUANPIN)
+            r.close()
+        finally:
+            shutil.rmtree(user, ignore_errors=True)
+
+
 if __name__ == "__main__":
     unittest.main()

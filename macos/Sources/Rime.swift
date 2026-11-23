@@ -1,5 +1,6 @@
 import AppKit
 import Carbon
+import CryptoKit
 import Foundation
 
 enum Scheme: String, CaseIterable {
@@ -15,7 +16,6 @@ enum Rime {
     static let squirrel = "/Library/Input Methods/Squirrel.app/Contents/MacOS/Squirrel"
     static let sourceID = "im.rime.inputmethod.Squirrel.Hans"
     private static let stateFile = userDir.appendingPathComponent("qi_schema.txt")
-    private static let versionFile = userDir.appendingPathComponent("qi_data_version.txt")
 
     // C2: 读写当前输入方式（与输入法内的 qi_switch.lua 共用 qi_schema.txt）。
     static var scheme: Scheme {
@@ -30,26 +30,58 @@ enum Rime {
         try? "\(s.rawValue) \(seq)\n".write(to: stateFile, atomically: true, encoding: .utf8)
     }
 
+    private static func sha(_ url: URL) -> String? {
+        guard let d = try? Data(contentsOf: url) else { return nil }
+        return SHA256.hash(data: d).map { String(format: "%02x", $0) }.joined()
+    }
+
+    // C2: 用户可自行修改配置：升级时，用户改过的文件（与上次装入时不同）保留不动。
     static func installData() {
-        guard let bundled = Bundle.main.resourceURL?.appendingPathComponent("rime-data"),
-              let version = try? String(contentsOf: bundled.appendingPathComponent("qi_data_version.txt"), encoding: .utf8)
-        else { return }
-        if (try? String(contentsOf: versionFile, encoding: .utf8)) == version { return }
+        guard let bundled = Bundle.main.resourceURL?.appendingPathComponent("rime-data") else { return }
+        if install(from: bundled, to: userDir) { deploy() }
+    }
+
+    static func install(from bundled: URL, to userDir: URL) -> Bool {
+        let manifestFile = userDir.appendingPathComponent("qi_installed.json")
+        let versionFile = userDir.appendingPathComponent("qi_data_version.txt")
+        guard let version = try? String(contentsOf: bundled.appendingPathComponent("qi_data_version.txt"), encoding: .utf8)
+        else { return false }
+        if (try? String(contentsOf: versionFile, encoding: .utf8)) == version { return false }
         let fm = FileManager.default
         try? fm.createDirectory(at: userDir, withIntermediateDirectories: true)
+        let old = (try? Data(contentsOf: manifestFile)).flatMap { try? JSONDecoder().decode([String: String].self, from: $0) }
+        // C2: 旧版曾占用这几个文件名放一炁自己的调整，现在它们留给用户
+        for name in ["default.custom.yaml", "double_pinyin_flypy.custom.yaml", "rime_ice.custom.yaml"] {
+            let u = userDir.appendingPathComponent(name)
+            if let t = try? String(contentsOf: u, encoding: .utf8), t.hasPrefix("# C2:") { try? fm.removeItem(at: u) }
+        }
+        var manifest: [String: String] = [:]
+        let base = bundled.resolvingSymlinksInPath().path
         if let e = fm.enumerator(at: bundled, includingPropertiesForKeys: [.isDirectoryKey]) {
             for case let src as URL in e {
-                let rel = String(src.path.dropFirst(bundled.path.count + 1))
+                let rel = String(src.resolvingSymlinksInPath().path.dropFirst(base.count + 1))
                 let dst = userDir.appendingPathComponent(rel)
                 if (try? src.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true {
                     try? fm.createDirectory(at: dst, withIntermediateDirectories: true)
-                } else {
-                    try? fm.removeItem(at: dst)
-                    try? fm.copyItem(at: src, to: dst)
+                    continue
                 }
+                let newHash = sha(src)
+                if let old, let cur = sha(dst), cur != newHash, cur != old[rel] {
+                    manifest[rel] = old[rel]
+                    continue
+                }
+                try? fm.removeItem(at: dst)
+                try? fm.copyItem(at: src, to: dst)
+                manifest[rel] = newHash
             }
         }
-        deploy()
+        if let d = try? JSONEncoder().encode(manifest) { try? d.write(to: manifestFile) }
+        return true
+    }
+
+    static func openFolder() {
+        try? FileManager.default.createDirectory(at: userDir, withIntermediateDirectories: true)
+        NSWorkspace.shared.open(userDir)
     }
 
     static func deploy() {

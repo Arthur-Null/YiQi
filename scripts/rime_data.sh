@@ -22,5 +22,8 @@ rsync -a --exclude .git --exclude .github --exclude others --exclude README.md -
   --exclude 't9.schema.yaml' --exclude 'build' \
   "$SRC/" "$OUT/"
 rsync -a "$ROOT/rime/" "$OUT/"
+for f in default:default rime_ice.schema:rime_ice double_pinyin_flypy.schema:double_pinyin_flypy; do
+  printf '\n__patch:\n  - qi_patch:/%s\n  - %s.custom:/patch?\n' "${f#*:}" "${f#*:}" >> "$OUT/${f%%:*}.yaml"
+done
 (cd "$OUT" && find . -type f ! -name qi_data_version.txt | LC_ALL=C sort | xargs shasum | shasum | cut -c1-16) > "$OUT/qi_data_version.txt"
 echo "$OUT"

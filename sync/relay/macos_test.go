@@ -101,3 +101,23 @@ func TestMacClientInterop(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+// C2: 升级一炁时保留用户改过的 Rime 配置文件（tests/macos/install_data.swift）。
+func TestMacInstallKeepsUserEdits(t *testing.T) {
+	root, _ := filepath.Abs("../..")
+	dir := t.TempDir()
+	main := filepath.Join(dir, "main.swift")
+	b, _ := os.ReadFile(filepath.Join(root, "tests/macos/install_data.swift"))
+	os.WriteFile(main, b, 0o644)
+	bin := filepath.Join(dir, "t")
+	build := exec.Command("swiftc", "-O", "-o", bin, filepath.Join(root, "macos/Sources/Rime.swift"), main)
+	build.Stderr = os.Stderr
+	if err := build.Run(); err != nil {
+		t.Fatal(err)
+	}
+	out, err := exec.Command(bin).CombinedOutput()
+	t.Log(string(out))
+	if err != nil {
+		t.Fatal(err)
+	}
+}

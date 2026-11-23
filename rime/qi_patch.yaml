@@ -1,0 +1,14 @@
+# C2: 一炁对雾凇拼音的调整：只保留小鹤双拼与全拼，加上切换逻辑（快捷键 / 菜单栏 / 键盘工具栏 / 方案选单）。
+# 这些调整通过 __patch 挂到对应文件上，*.custom.yaml 留给用户自己的修改，并在最后生效。
+default:
+  schema_list:
+    - schema: double_pinyin_flypy
+    - schema: rime_ice
+double_pinyin_flypy:
+  schema/name: 小鹤双拼
+  "engine/processors/@before 0": lua_processor@*qi_switch
+  "switches/@next": { name: qi_flypy, reset: 1, states: [ 全拼, 小鹤双拼 ] }
+rime_ice:
+  schema/name: 全拼
+  "engine/processors/@before 0": lua_processor@*qi_switch
+  "switches/@next": { name: qi_flypy, reset: 0, states: [ 全拼, 小鹤双拼 ] }

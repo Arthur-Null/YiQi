@@ -197,6 +197,11 @@ struct SettingsView: View {
                     }
                     note("快捷键需包含 Ctrl 或 Option（F1–F12 可单独使用）。菜单栏的「鹤 / 全」也可以随时点选。")
                     note("在系统的输入法菜单里，一炁显示为「鼠须管」（它使用的输入引擎）。")
+                    HStack {
+                        Button("打开配置文件夹") { Rime.openFolder() }
+                        Button("重新部署") { Rime.deploy() }
+                    }
+                    note("想改词库或外观等配置：在配置文件夹里新建或编辑 default.custom.yaml、double_pinyin_flypy.custom.yaml、rime_ice.custom.yaml、squirrel.custom.yaml、custom_phrase.txt，改完点「重新部署」。升级不会覆盖你改过的文件。")
                 }.padding(6)
             } label: { Text("输入方式").font(.headline) }
 
