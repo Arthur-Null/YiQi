@@ -44,7 +44,12 @@ final class Model: ObservableObject {
     var serverHost: String? { pairCode.flatMap(QiKey.init(pairCode:))?.server.host }
 
     func checkUpdate() {
-        Updater.check { [weak self] r in self?.update = r }
+        Updater.check { [weak self] r in
+            self?.update = r
+            // C2: 告诉输入法下拉菜单是否显示「有新版本」
+            let flag = Store.dir.appendingPathComponent("update-available.txt")
+            if let r { try? r.version.write(to: flag, atomically: true, encoding: .utf8) } else { try? FileManager.default.removeItem(at: flag) }
+        }
     }
 
     func installUpdate() {
@@ -173,7 +178,7 @@ struct SettingsView: View {
                         // C1: 新版 macOS 需要用户在系统设置里添加一次输入法，这里一步步引导
                         VStack(alignment: .leading, spacing: 6) {
                             Text("还差一步：把一炁添加到系统输入法").font(.headline).foregroundStyle(.red)
-                            Text("1. 点下面的「打开输入法设置」\n2. 在「文字输入」的「输入法」一行点「编辑…」，再点左下角的 +\n3. 左边选「简体中文」，右边选「鼠须管」，点「添加」")
+                            Text("1. 点下面的「打开输入法设置」\n2. 在「文字输入」的「输入法」一行点「编辑…」，再点左下角的 +\n3. 左边选「简体中文」，右边选「一炁输入法」，点「添加」")
                                 .font(.callout).fixedSize(horizontal: false, vertical: true)
                             note("添加好后这里会自动消失，一炁会直接切换过去，不需要注销或重启。")
                             Button("打开输入法设置") { Rime.openInputSourceSettings() }
@@ -195,8 +200,7 @@ struct SettingsView: View {
                             Button("恢复默认") { model.resetHotkey() }
                         }
                     }
-                    note("快捷键需包含 Ctrl 或 Option（F1–F12 可单独使用）。菜单栏的「鹤 / 全」也可以随时点选。")
-                    note("在系统的输入法菜单里，一炁显示为「鼠须管」（它使用的输入引擎）。")
+                    note("快捷键需包含 Ctrl 或 Option（F1–F12 可单独使用）。也可以点菜单栏的一炁图标，选「切换至全拼 / 小鹤双拼」。")
                 }.padding(6)
             } label: { Text("输入方式").font(.headline) }
 

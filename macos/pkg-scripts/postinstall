@@ -1,21 +1,34 @@
 #!/bin/bash
 user=$(/usr/bin/stat -f%Su /dev/console)
+uid=$(/usr/bin/id -u "$user")
 home=$(/usr/bin/dscl . -read "/Users/$user" NFSHomeDirectory | awk '{print $2}')
 agents="$home/Library/LaunchAgents"
+IM="/Library/Input Methods/YiQiInput.app/Contents/MacOS/YiQiInput"
+
+# C1: 旧版一炁装过鼠须管，现在由「一炁输入法」取代，避免系统里出现两个输入法
+if [ -d "/Library/Input Methods/Squirrel.app" ] && /usr/sbin/pkgutil --pkg-info im.rime.inputmethod.Squirrel >/dev/null 2>&1; then
+  /usr/bin/sudo -u "$user" /usr/bin/killall Squirrel 2>/dev/null || true
+  /bin/rm -rf "/Library/Input Methods/Squirrel.app"
+  /usr/sbin/pkgutil --forget im.rime.inputmethod.Squirrel >/dev/null 2>&1 || true
+fi
+
+# C1: 让新版输入法在下次使用时加载，并在用户会话里登记到系统
+/usr/bin/sudo -u "$user" /usr/bin/killall YiQiInput 2>/dev/null || true
+/bin/launchctl asuser "$uid" /usr/bin/sudo -u "$user" "$IM" --register-input-source >/dev/null 2>&1 || true
+
 /usr/bin/sudo -u "$user" /bin/mkdir -p "$agents"
 /usr/bin/sudo -u "$user" /usr/bin/tee "$agents/im.yiqi.app.plist" >/dev/null <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
 <key>Label</key><string>im.yiqi.app</string>
-<key>ProgramArguments</key><array><string>/Applications/YiQi.app/Contents/MacOS/YiQi</string></array>
+<key>ProgramArguments</key><array><string>/Applications/YiQi.app/Contents/MacOS/YiQi</string><string>--background</string></array>
 <key>RunAtLoad</key><true/>
 <key>LimitLoadToSessionType</key><string>Aqua</string>
 </dict></plist>
 PLIST
 /usr/bin/sudo -u "$user" /usr/bin/killall YiQi 2>/dev/null || true
 # C1: 装完立即在用户会话里启动一炁，引导把输入法添加到系统
-uid=$(/usr/bin/id -u "$user")
 /bin/launchctl bootout "gui/$uid/im.yiqi.app" 2>/dev/null || true
 /bin/launchctl bootstrap "gui/$uid" "$agents/im.yiqi.app.plist" 2>/dev/null || \
   /bin/launchctl asuser "$uid" /usr/bin/sudo -u "$user" /usr/bin/open /Applications/YiQi.app

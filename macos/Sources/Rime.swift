@@ -13,8 +13,10 @@ enum Scheme: String, CaseIterable {
 
 enum Rime {
     static let userDir = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Rime")
-    static let squirrel = "/Library/Input Methods/Squirrel.app/Contents/MacOS/Squirrel"
-    static let sourceID = "im.rime.inputmethod.Squirrel.Hans"
+    static let inputMethodApp = "/Library/Input Methods/YiQiInput.app"
+    static let squirrel = inputMethodApp + "/Contents/MacOS/YiQiInput"
+    static let sharedDir = URL(fileURLWithPath: inputMethodApp + "/Contents/SharedSupport")
+    static let sourceID = "im.yiqi.inputmethod.pinyin"
     private static let stateFile = userDir.appendingPathComponent("qi_schema.txt")
 
     // C2: 读写当前输入方式（与输入法内的 qi_switch.lua 共用 qi_schema.txt）。
@@ -35,48 +37,41 @@ enum Rime {
         return SHA256.hash(data: d).map { String(format: "%02x", $0) }.joined()
     }
 
-    // C2: 用户可自行修改配置：升级时，用户改过的文件（与上次装入时不同）保留不动。
-    static func installData() {
-        guard let bundled = Bundle.main.resourceURL?.appendingPathComponent("rime-data") else { return }
-        if install(from: bundled, to: userDir) { deploy() }
+    // C2: 旧版把词库与配置复制进了用户目录，现在它们随输入法本体提供；
+    // 删除用户目录里这些旧副本（用户改过的保留），之后重新部署，只做一次。
+    static func cleanUpLegacyData() {
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
+        let marker = Store.dir.appendingPathComponent("rime-cleaned-\(version)")
+        if FileManager.default.fileExists(atPath: marker.path) { return }
+        cleanUp(userDir: userDir, shared: sharedDir)
+        deploy()
+        FileManager.default.createFile(atPath: marker.path, contents: nil)
     }
 
-    static func install(from bundled: URL, to userDir: URL) -> Bool {
-        let manifestFile = userDir.appendingPathComponent("qi_installed.json")
-        let versionFile = userDir.appendingPathComponent("qi_data_version.txt")
-        guard let version = try? String(contentsOf: bundled.appendingPathComponent("qi_data_version.txt"), encoding: .utf8)
-        else { return false }
-        if (try? String(contentsOf: versionFile, encoding: .utf8)) == version { return false }
+    @discardableResult
+    static func cleanUp(userDir: URL, shared: URL) -> Bool {
         let fm = FileManager.default
-        try? fm.createDirectory(at: userDir, withIntermediateDirectories: true)
-        let old = (try? Data(contentsOf: manifestFile)).flatMap { try? JSONDecoder().decode([String: String].self, from: $0) }
-        // C2: 旧版曾占用这几个文件名放一炁自己的调整，现在它们留给用户
+        let manifestFile = userDir.appendingPathComponent("qi_installed.json")
+        let manifest = (try? Data(contentsOf: manifestFile)).flatMap { try? JSONDecoder().decode([String: String].self, from: $0) }
+        var removed = false
         for name in ["default.custom.yaml", "double_pinyin_flypy.custom.yaml", "rime_ice.custom.yaml"] {
             let u = userDir.appendingPathComponent(name)
-            if let t = try? String(contentsOf: u, encoding: .utf8), t.hasPrefix("# C2:") { try? fm.removeItem(at: u) }
+            if let t = try? String(contentsOf: u, encoding: .utf8), t.hasPrefix("# C2:") { try? fm.removeItem(at: u); removed = true }
         }
-        var manifest: [String: String] = [:]
-        let base = bundled.resolvingSymlinksInPath().path
-        if let e = fm.enumerator(at: bundled, includingPropertiesForKeys: [.isDirectoryKey]) {
-            for case let src as URL in e {
+        let base = shared.resolvingSymlinksInPath().path
+        if let e = fm.enumerator(at: shared, includingPropertiesForKeys: [.isDirectoryKey]) {
+            for case let src as URL in e where (try? src.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory != true {
                 let rel = String(src.resolvingSymlinksInPath().path.dropFirst(base.count + 1))
+                if rel.hasPrefix("build/") { continue }
                 let dst = userDir.appendingPathComponent(rel)
-                if (try? src.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true {
-                    try? fm.createDirectory(at: dst, withIntermediateDirectories: true)
-                    continue
-                }
-                let newHash = sha(src)
-                if let old, let cur = sha(dst), cur != newHash, cur != old[rel] {
-                    manifest[rel] = old[rel]
-                    continue
-                }
+                guard let cur = sha(dst) else { continue }
+                if let manifest, let old = manifest[rel], cur != old { continue }
                 try? fm.removeItem(at: dst)
-                try? fm.copyItem(at: src, to: dst)
-                manifest[rel] = newHash
+                removed = true
             }
         }
-        if let d = try? JSONEncoder().encode(manifest) { try? d.write(to: manifestFile) }
-        return true
+        for name in ["qi_installed.json", "qi_data_version.txt"] { try? fm.removeItem(at: userDir.appendingPathComponent(name)) }
+        return removed
     }
 
     static func deploy() {
@@ -108,10 +103,10 @@ enum Rime {
     static func ensureInputSource(select: Bool) -> Bool {
         guard squirrelInstalled else { return false }
         if findSource(sourceID) == nil {
-            TISRegisterInputSource(URL(fileURLWithPath: "/Library/Input Methods/Squirrel.app") as CFURL)
+            TISRegisterInputSource(URL(fileURLWithPath: inputMethodApp) as CFURL)
         }
         if !inputSourceEnabled {
-            for id in ["im.rime.inputmethod.Squirrel", sourceID] {
+            for id in ["im.yiqi.inputmethod", sourceID] {
                 if let s = findSource(id) { TISEnableInputSource(s) }
             }
         }
