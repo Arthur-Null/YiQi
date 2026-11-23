@@ -206,7 +206,7 @@ struct SettingsView: View {
                         }
                         HStack {
                             Button("注册新同步组") { model.register() }.disabled(model.busy)
-                            note("第一台设备用这个；临时密码在部署服务器时显示。")
+                            note("第一台设备用这个；临时密码在服务器上运行 yiqi-relay code 生成，10 分钟内有效。")
                         }
                     }
                     if let m = model.message {

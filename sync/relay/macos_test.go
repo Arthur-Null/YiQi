@@ -44,7 +44,8 @@ func TestMacClientInterop(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
-	peer := exec.CommandContext(ctx, bin, wsURL, SetupCode(dir), textFile)
+	setup, _ := NewSetupCode(dir, time.Minute)
+	peer := exec.CommandContext(ctx, bin, wsURL, setup, textFile)
 	out, _ := peer.StdoutPipe()
 	peer.Stderr = os.Stderr
 	if err := peer.Start(); err != nil {

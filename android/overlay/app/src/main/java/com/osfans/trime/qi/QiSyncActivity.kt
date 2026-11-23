@@ -101,7 +101,7 @@ class QiSyncActivity : AppCompatActivity() {
         unpaired.addView(button("加入同步组") { pair(false, server.text.toString(), code.text.toString()) })
         unpaired.addView(text("临时密码在已同步的设备上点「添加设备」获得。", 13f))
         unpaired.addView(button("注册新同步组") { pair(true, server.text.toString(), code.text.toString()) })
-        unpaired.addView(text("第一台设备用这个；临时密码在部署服务器时显示。", 13f))
+        unpaired.addView(text("第一台设备用这个；临时密码在服务器上运行 yiqi-relay code 生成，10 分钟内有效。", 13f))
         col.addView(unpaired)
 
         message = text("", 14f)

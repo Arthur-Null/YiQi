@@ -315,7 +315,7 @@ object QiPairing {
         val (status, err) = post(endpoint(server, "/v1/claim"), JSONObject().put("code", code.filter(Char::isDigit)).put("v", k.verifier))
         return when (status) {
             200 -> Outcome.Ok(k)
-            403 -> Outcome.Fail("临时密码不对，请核对后重试。")
+            403 -> Outcome.Fail("临时密码不对或已过期，请核对后重试。")
             409 -> Outcome.Fail("这台服务器已经注册过同步组。请在已同步的设备上点「添加设备」，用它给出的 6 位临时密码加入。")
             else -> Outcome.Fail("连不上服务器（${err ?: "HTTP $status"}），请检查地址和网络。")
         }

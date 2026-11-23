@@ -314,7 +314,7 @@ enum Pairing {
 
         var message: String {
             switch self {
-            case .wrongCode: return "临时密码不对，请核对后重试。"
+            case .wrongCode: return "临时密码不对或已过期，请核对后重试。"
             case .alreadyRegistered: return "这台服务器已经注册过同步组。请在已同步的设备上点「添加设备」，用它给出的 6 位临时密码加入。"
             case .noInvite: return "没有找到等待加入的邀请。请先在已同步的设备上点「添加设备」，并保持那个窗口打开。"
             case .tooManyAttempts: return "尝试次数过多，请在已同步的设备上重新点「添加设备」获取新的临时密码。"

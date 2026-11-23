@@ -2,8 +2,8 @@
 # C4, C7: 把剪贴板中转部署到任意一台可 ssh 登录的 Linux 服务器。
 # 用法：server/deploy.sh <ssh 主机> <本机端口>
 # 中转只监听服务器的 127.0.0.1:<端口>，由部署者自己的隧道或反向代理把域名转到这个端口；
-# 之后在第一台设备的一炁设置里填写该域名，点「创建配对码」。
-# 所有设备都丢失时，在服务器上运行 yiqi-relay reset 清除配对，再重新创建。
+# 第一台设备注册同步组用的临时密码：在服务器上运行 yiqi-relay code 生成（10 分钟内有效）。
+# 所有设备都丢失时，在服务器上运行 yiqi-relay reset 清除同步组，再生成临时密码重新注册。
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 HOST="$1"
@@ -25,6 +25,5 @@ systemctl enable -q yiqi-relay
 REMOTE
 
 ssh "$HOST" "systemctl restart yiqi-relay && sleep 1 && systemctl is-active yiqi-relay"
-# C5: 同步组尚未注册时，显示第一台设备要用的临时密码
-CODE=$(ssh "$HOST" "/usr/local/bin/yiqi-relay setup-code --data /var/lib/yiqi-relay")
-if [ -n "$CODE" ]; then echo "第一台设备注册同步组用的临时密码：$CODE"; fi
+# C5: 同步组尚未注册时，生成第一台设备注册用的临时密码（10 分钟内有效；过期后在服务器上运行 yiqi-relay code 再生成）
+ssh "$HOST" "/usr/local/bin/yiqi-relay code --data /var/lib/yiqi-relay" || true

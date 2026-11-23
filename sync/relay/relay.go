@@ -7,12 +7,14 @@ import (
 	"crypto/subtle"
 	"encoding/hex"
 	"encoding/json"
-	"log"
+	"errors"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/coder/websocket"
@@ -25,6 +27,7 @@ const (
 	inviteTTL        = 5 * time.Minute
 	inviteAttempts   = 5
 	setupAttempts    = 10
+	SetupCodeTTL     = 10 * time.Minute
 	joinReplyTimeout = 30 * time.Second
 )
 
@@ -52,44 +55,88 @@ func New(dataDir string) (*Server, error) {
 	if err := os.MkdirAll(dataDir, 0o700); err != nil {
 		return nil, err
 	}
-	v, _ := os.ReadFile(filepath.Join(dataDir, "verifier"))
 	s := &Server{
-		verifier: strings.TrimSpace(string(v)), dataDir: dataDir,
+		verifier: readVerifier(dataDir), dataDir: dataDir,
 		clients: map[*websocket.Conn]chan []byte{}, joins: map[string]chan string{},
 	}
 	s.latest, _ = os.ReadFile(filepath.Join(dataDir, "latest.json"))
-	if s.verifier == "" {
-		s.setupCode = SetupCode(dataDir)
-		if s.setupCode == "" {
-			s.newSetupCode()
-		}
-		log.Printf("同步组尚未注册，第一台设备使用临时密码：%s", s.setupCode)
-	}
+	go s.watchVerifier()
 	return s, nil
 }
 
-// newSetupCode C5: 第一台设备注册用的临时密码，只在服务器上生成和查看。
-func (s *Server) newSetupCode() {
-	s.setupCode = protocol.NewCode()
-	s.setupFails = 0
-	os.WriteFile(filepath.Join(s.dataDir, "setup-code"), []byte(s.setupCode+"\n"), 0o600)
+func readVerifier(dataDir string) string {
+	v, _ := os.ReadFile(filepath.Join(dataDir, "verifier"))
+	return strings.TrimSpace(string(v))
 }
 
-// SetupCode C5: 读出当前的注册临时密码（供部署者在服务器上查看）。
-func SetupCode(dataDir string) string {
-	c, _ := os.ReadFile(filepath.Join(dataDir, "setup-code"))
-	return strings.TrimSpace(string(c))
+// watchVerifier C5: 在服务器上重置同步组后，已连接的旧设备立即断开，无需重启服务。
+func (s *Server) watchVerifier() {
+	for range time.Tick(2 * time.Second) {
+		s.reloadVerifier()
+	}
 }
 
-// Reset C5: 所有设备都丢失时，在服务器上清除同步组，重新生成注册临时密码。
-func Reset(dataDir string) (string, error) {
-	os.Remove(filepath.Join(dataDir, "latest.json"))
-	if err := os.Remove(filepath.Join(dataDir, "verifier")); err != nil && !os.IsNotExist(err) {
+func (s *Server) reloadVerifier() {
+	v := readVerifier(s.dataDir)
+	s.mu.Lock()
+	if v == s.verifier {
+		s.mu.Unlock()
+		return
+	}
+	s.verifier = v
+	s.latest = nil
+	s.invite = nil
+	conns := make([]*websocket.Conn, 0, len(s.clients))
+	for c := range s.clients {
+		conns = append(conns, c)
+	}
+	s.mu.Unlock()
+	for _, c := range conns {
+		c.CloseNow()
+	}
+}
+
+// NewSetupCode C5: 在服务器上现场生成第一台设备注册用的临时密码，ttl 后失效；同步组已注册时拒绝生成。
+func NewSetupCode(dataDir string, ttl time.Duration) (string, error) {
+	if readVerifier(dataDir) != "" {
+		return "", ErrRegistered
+	}
+	code := protocol.NewCode()
+	line := code + " " + strconv.FormatInt(time.Now().Add(ttl).Unix(), 10) + "\n"
+	p := filepath.Join(dataDir, "setup-code")
+	if err := os.WriteFile(p, []byte(line), 0o600); err != nil {
 		return "", err
 	}
-	s := &Server{dataDir: dataDir}
-	s.newSetupCode()
-	return s.setupCode, nil
+	// C5: 命令可能以 root 运行，文件需归服务进程（数据目录的所有者）可读
+	if st, err := os.Stat(dataDir); err == nil {
+		if sys, ok := st.Sys().(*syscall.Stat_t); ok {
+			os.Chown(p, int(sys.Uid), int(sys.Gid))
+		}
+	}
+	return code, nil
+}
+
+var ErrRegistered = errors.New("sync group already registered")
+
+// currentSetupCode C5: 读出仍在有效期内的注册临时密码
+func currentSetupCode(dataDir string) string {
+	b, _ := os.ReadFile(filepath.Join(dataDir, "setup-code"))
+	code, exp, ok := strings.Cut(strings.TrimSpace(string(b)), " ")
+	t, err := strconv.ParseInt(exp, 10, 64)
+	if !ok || err != nil || len(code) != 6 || time.Now().Unix() > t {
+		return ""
+	}
+	return code
+}
+
+// Reset C5: 所有设备都丢失时，在服务器上清除同步组；之后用 NewSetupCode 生成注册临时密码。
+func Reset(dataDir string) error {
+	os.Remove(filepath.Join(dataDir, "latest.json"))
+	os.Remove(filepath.Join(dataDir, "setup-code"))
+	if err := os.Remove(filepath.Join(dataDir, "verifier")); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	return nil
 }
 
 // authorized C5: 只允许同步组内的设备收发。
@@ -98,6 +145,7 @@ func (s *Server) authorized(r *http.Request) bool {
 	if !ok {
 		return false
 	}
+	s.reloadVerifier()
 	s.mu.Lock()
 	v := s.verifier
 	s.mu.Unlock()
@@ -128,17 +176,21 @@ func (s *Server) serveClaim(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
+	s.reloadVerifier()
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.verifier != "" {
 		http.Error(w, "already registered", http.StatusConflict)
 		return
 	}
-	if subtle.ConstantTimeCompare([]byte(req.Code), []byte(s.setupCode)) != 1 {
+	code := currentSetupCode(s.dataDir)
+	if code != s.setupCode {
+		s.setupCode, s.setupFails = code, 0
+	}
+	if code == "" || subtle.ConstantTimeCompare([]byte(req.Code), []byte(code)) != 1 {
 		s.setupFails++
-		if s.setupFails >= setupAttempts {
-			s.newSetupCode()
-			log.Printf("注册临时密码输错次数过多，已更换为：%s", s.setupCode)
+		if code != "" && s.setupFails >= setupAttempts {
+			os.Remove(filepath.Join(s.dataDir, "setup-code"))
 		}
 		http.Error(w, "wrong code", http.StatusForbidden)
 		return
@@ -150,6 +202,7 @@ func (s *Server) serveClaim(w http.ResponseWriter, r *http.Request) {
 	os.Remove(filepath.Join(s.dataDir, "setup-code"))
 	s.verifier = req.Verifier
 	s.setupCode = ""
+	s.latest = nil
 	w.WriteHeader(http.StatusOK)
 }
 
