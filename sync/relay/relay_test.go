@@ -2,6 +2,7 @@ package relay
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -16,23 +17,28 @@ import (
 	"qi/sync/protocol"
 )
 
+func claim(t *testing.T, srv *httptest.Server, code string, k protocol.Key) int {
+	body, _ := json.Marshal(map[string]string{"code": code, "v": protocol.Verifier(k.AuthToken())})
+	resp, err := srv.Client().Post(srv.URL+"/v1/claim", "application/json", strings.NewReader(string(body)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	return resp.StatusCode
+}
+
 func setup(t *testing.T) (*httptest.Server, protocol.Key, string) {
 	dir := t.TempDir()
-	srv := httptest.NewTLSServer(nil)
-	code, err := Init(dir, "wss://"+srv.Listener.Addr().String()+"/v1/ws")
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, k, err := protocol.ParsePairCode(code)
-	if err != nil {
-		t.Fatal(err)
-	}
 	s, err := New(dir)
 	if err != nil {
 		t.Fatal(err)
 	}
-	srv.Config.Handler = s.Handler()
+	srv := httptest.NewTLSServer(s.Handler())
 	t.Cleanup(srv.Close)
+	k, _ := protocol.NewKey()
+	if c := claim(t, srv, SetupCode(dir), k); c != http.StatusOK {
+		t.Fatal("claim:", c)
+	}
 	return srv, k, dir
 }
 
@@ -155,5 +161,125 @@ func TestServerHoldsOnlyCiphertext(t *testing.T) {
 	}
 	if c, err := k.Open(f); err != nil || c.Text != secret {
 		t.Fatal("own key failed to decrypt")
+	}
+}
+
+// C5, C7: 第一台设备凭服务器生成的临时密码注册同步组；密码错误被拒、注册后不能再注册；重置后可重新注册。
+func TestRegisterWithSetupCode(t *testing.T) {
+	dir := t.TempDir()
+	s, _ := New(dir)
+	srv := httptest.NewTLSServer(s.Handler())
+	defer srv.Close()
+	code := SetupCode(dir)
+	if len(code) != 6 {
+		t.Fatalf("setup code %q", code)
+	}
+	k1, _ := protocol.NewKey()
+	if _, resp, err := dial(t, srv, k1.AuthToken()); err == nil || resp.StatusCode != http.StatusUnauthorized {
+		t.Fatal("unregistered server accepted a device")
+	}
+	wrong := "000000"
+	if code == wrong {
+		wrong = "111111"
+	}
+	if c := claim(t, srv, wrong, k1); c != http.StatusForbidden {
+		t.Fatal("wrong code:", c)
+	}
+	if c := claim(t, srv, code, k1); c != http.StatusOK {
+		t.Fatal("register:", c)
+	}
+	if SetupCode(dir) != "" {
+		t.Fatal("setup code not discarded")
+	}
+	k2, _ := protocol.NewKey()
+	if c := claim(t, srv, code, k2); c != http.StatusConflict {
+		t.Fatal("second register:", c)
+	}
+	if _, _, err := dial(t, srv, k1.AuthToken()); err != nil {
+		t.Fatal(err)
+	}
+	newCode, err := Reset(dir)
+	if err != nil || newCode == "" {
+		t.Fatal(err)
+	}
+	s2, _ := New(dir)
+	srv.Config.Handler = s2.Handler()
+	if c := claim(t, srv, newCode, k2); c != http.StatusOK {
+		t.Fatal("register after reset:", c)
+	}
+}
+
+// C5: 新设备凭已同步设备给出的 6 位临时密码加入：拿到同一个同步组密钥；密码错误拿不到；没有邀请或尝试过多被拒。
+func TestJoinWithTemporaryCode(t *testing.T) {
+	srv, k, _ := setup(t)
+	a, _, err := dial(t, srv, k.AuthToken())
+	if err != nil {
+		t.Fatal(err)
+	}
+	join := func(code string) (protocol.Key, int) {
+		priv, _ := protocol.NewEphemeral()
+		body, _ := json.Marshal(protocol.Frame{T: "join", D: base64.StdEncoding.EncodeToString(priv.PublicKey().Bytes())})
+		resp, err := srv.Client().Post(srv.URL+"/v1/join", "application/json", strings.NewReader(string(body)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			return protocol.Key{}, resp.StatusCode
+		}
+		var f protocol.Frame
+		json.NewDecoder(resp.Body).Decode(&f)
+		got, err := protocol.OpenGroupKey(priv, f.D, code)
+		if err != nil {
+			return protocol.Key{}, http.StatusForbidden
+		}
+		return got, http.StatusOK
+	}
+	if _, c := join("123456"); c != http.StatusNotFound {
+		t.Fatal("join without invite:", c)
+	}
+
+	code := protocol.NewCode()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	msg, _ := json.Marshal(protocol.Frame{T: "invite"})
+	a.Write(ctx, websocket.MessageText, msg)
+	go func() {
+		for {
+			_, data, err := a.Read(ctx)
+			if err != nil {
+				return
+			}
+			var f protocol.Frame
+			json.Unmarshal(data, &f)
+			if f.T != "join" {
+				continue
+			}
+			pub, _ := base64.StdEncoding.DecodeString(f.D)
+			d, _ := protocol.SealGroupKey(pub, code, k)
+			reply, _ := json.Marshal(protocol.Frame{T: "join-ok", J: f.J, D: d})
+			a.Write(ctx, websocket.MessageText, reply)
+		}
+	}()
+	time.Sleep(100 * time.Millisecond)
+	wrong := "000000"
+	if code == wrong {
+		wrong = "111111"
+	}
+	if _, c := join(wrong); c != http.StatusForbidden {
+		t.Fatal("wrong code accepted:", c)
+	}
+	got, c := join(code)
+	if c != http.StatusOK || got != k {
+		t.Fatal("join failed:", c)
+	}
+	if _, _, err := dial(t, srv, got.AuthToken()); err != nil {
+		t.Fatal("joined device rejected:", err)
+	}
+	for i := 0; i < 5; i++ {
+		join(wrong)
+	}
+	if _, c := join(code); c != http.StatusTooManyRequests && c != http.StatusNotFound {
+		t.Fatal("attempt limit not enforced:", c)
 	}
 }

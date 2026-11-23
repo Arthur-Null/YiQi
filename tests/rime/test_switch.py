@@ -98,6 +98,20 @@ class SwitchTest(unittest.TestCase):
         self.assertEqual(self.r.cmd("schema"), FLYPY)
         self.assertEqual(self.r.cmd("cands").split("|")[0], "你好")
 
+    def test_custom_hotkey_replaces_default(self):
+        path = os.path.join(self.user, "qi_hotkey.txt")
+        with open(path, "w") as f:
+            f.write("Ctrl + Option + K\nControl+Alt+k\n")
+        try:
+            self.r.cmd("keys {Control+Alt+k}")
+            self.assertEqual(self.r.cmd("schema"), QUANPIN)
+            self.r.cmd("keys {Control+Shift+1}")
+            self.assertEqual(self.r.cmd("schema"), QUANPIN)
+            self.r.cmd("keys {Control+Alt+k}")
+            self.assertEqual(self.r.cmd("schema"), FLYPY)
+        finally:
+            os.remove(path)
+
     def test_hotkey_is_recorded_for_interface_and_other_sessions(self):
         self.r.cmd("keys {Control+Shift+1}")
         with open(os.path.join(self.user, "qi_schema.txt")) as f:

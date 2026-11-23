@@ -61,7 +61,8 @@ type Clip struct {
 
 type Frame struct {
 	T string `json:"t"`
-	D string `json:"d"`
+	D string `json:"d,omitempty"`
+	J string `json:"j,omitempty"`
 }
 
 func (k Key) Seal(c Clip) (Frame, error) {

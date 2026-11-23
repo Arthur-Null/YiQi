@@ -1,12 +1,13 @@
 #!/bin/bash
 # C4, C7: 把剪贴板中转部署到任意一台可 ssh 登录的 Linux 服务器。
-# 用法：server/deploy.sh <ssh 主机> <公网地址，如 wss://yiqi.example.com/v1/ws> <本机端口>
-# 中转只监听服务器的 127.0.0.1:<端口>，由部署者自己的隧道或反向代理把公网地址转到这个端口。
+# 用法：server/deploy.sh <ssh 主机> <本机端口>
+# 中转只监听服务器的 127.0.0.1:<端口>，由部署者自己的隧道或反向代理把域名转到这个端口；
+# 之后在第一台设备的一炁设置里填写该域名，点「创建配对码」。
+# 所有设备都丢失时，在服务器上运行 yiqi-relay reset 清除配对，再重新创建。
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 HOST="$1"
-URL="$2"
-PORT="$3"
+PORT="$2"
 
 ARCH=$(ssh "$HOST" uname -m)
 case "$ARCH" in x86_64) GOARCH=amd64 ;; aarch64) GOARCH=arm64 ;; *) echo "unsupported $ARCH"; exit 1 ;; esac
@@ -23,12 +24,7 @@ systemctl daemon-reload
 systemctl enable -q yiqi-relay
 REMOTE
 
-# C5: 首次部署生成配对码，只保存在运行本脚本的这台 Mac 的一炁里，由它向自己的其他设备展示
-PAIR="$HOME/Library/Application Support/YiQi/pair.txt"
-if ! ssh "$HOST" test -f /var/lib/yiqi-relay/verifier; then
-  mkdir -p "$(dirname "$PAIR")"
-  CODE=$(ssh "$HOST" "runuser -u yiqi-relay -- /usr/local/bin/yiqi-relay init --data /var/lib/yiqi-relay --url $URL")
-  (umask 077; printf '%s' "$CODE" > "$PAIR")
-  echo "配对码已保存到 $PAIR"
-fi
 ssh "$HOST" "systemctl restart yiqi-relay && sleep 1 && systemctl is-active yiqi-relay"
+# C5: 同步组尚未注册时，显示第一台设备要用的临时密码
+CODE=$(ssh "$HOST" "/usr/local/bin/yiqi-relay setup-code --data /var/lib/yiqi-relay")
+if [ -n "$CODE" ]; then echo "第一台设备注册同步组用的临时密码：$CODE"; fi

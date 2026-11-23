@@ -12,20 +12,24 @@ import (
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: yiqi-relay init|serve ...")
+		fmt.Fprintln(os.Stderr, "usage: yiqi-relay serve|setup-code|reset ...")
 		os.Exit(2)
 	}
 	switch os.Args[1] {
-	case "init":
-		fs := flag.NewFlagSet("init", flag.ExitOnError)
+	case "reset":
+		fs := flag.NewFlagSet("reset", flag.ExitOnError)
 		data := fs.String("data", "/var/lib/yiqi-relay", "")
-		url := fs.String("url", "", "wss://<domain>/v1/ws")
 		fs.Parse(os.Args[2:])
-		code, err := relay.Init(*data, *url)
+		code, err := relay.Reset(*data)
 		if err != nil {
 			log.Fatal(err)
 		}
 		fmt.Println(code)
+	case "setup-code":
+		fs := flag.NewFlagSet("setup-code", flag.ExitOnError)
+		data := fs.String("data", "/var/lib/yiqi-relay", "")
+		fs.Parse(os.Args[2:])
+		fmt.Println(relay.SetupCode(*data))
 	case "serve":
 		fs := flag.NewFlagSet("serve", flag.ExitOnError)
 		data := fs.String("data", "/var/lib/yiqi-relay", "")

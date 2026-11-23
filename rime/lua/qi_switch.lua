@@ -1,15 +1,31 @@
 -- C2: 小鹤双拼 / 全拼 切换。
--- 快捷键 Ctrl+Shift+1 在两者间切换；界面（菜单栏、手机键盘按钮）写入 qi_schema.txt 请求切换。
+-- 快捷键（默认 Ctrl+Shift+1，可在设置中更改）在两者间切换；界面（菜单栏、手机键盘按钮）写入 qi_schema.txt 请求切换。
 -- qi_schema.txt 是"当前输入方式"的唯一记录，内容为 "<方案名> <序号>"，所有会话按它对齐。
 
 local SCHEMAS = { "double_pinyin_flypy", "rime_ice" }
-local HOTKEYS = { KeyEvent("Control+Shift+1"), KeyEvent("Control+Shift+exclam") }
+local DEFAULT_HOTKEYS = "Control+Shift+1 Control+Shift+exclam"
 
 QI_SWITCH = QI_SWITCH or {}
 local S = QI_SWITCH
 
+-- C2: 快捷键可由用户设置：qi_hotkey.txt 第二行是空格分隔的 Rime 按键写法，没有该文件时用默认值。
+local function hotkeys()
+  local spec = DEFAULT_HOTKEYS
+  local f = io.open(rime_api.get_user_data_dir() .. "/qi_hotkey.txt", "r")
+  if f then
+    f:read("*l")
+    spec = f:read("*l") or spec
+    f:close()
+  end
+  if spec ~= S.hotkey_spec then
+    S.hotkey_spec, S.hotkeys = spec, {}
+    for k in spec:gmatch("%S+") do table.insert(S.hotkeys, KeyEvent(k)) end
+  end
+  return S.hotkeys
+end
+
 local function is_hotkey(key)
-  for _, k in ipairs(HOTKEYS) do
+  for _, k in ipairs(hotkeys()) do
     if key:eq(k) then return true end
   end
   return false

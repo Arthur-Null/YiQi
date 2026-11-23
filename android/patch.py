@@ -22,7 +22,7 @@ patch("app/build.gradle.kts", 'resValue("string", "trime_app_name", "@string/app
 patch("app/build.gradle.kts", "    implementation(libs.kotlinx.coroutines)\n",
       "    implementation(libs.kotlinx.coroutines)\n"
       '    implementation("com.squareup.okhttp3:okhttp:4.12.0")\n'
-      '    implementation("com.journeyapps:zxing-android-embedded:4.3.0")\n')
+      )
 
 # C2: 首次打开只需两步（启用、选用），数据放在应用内部；默认只列出小鹤双拼与全拼
 patch("app/src/main/java/com/osfans/trime/data/prefs/AppPrefs.kt",
@@ -76,21 +76,14 @@ patch("app/src/main/AndroidManifest.xml",
 # C2, C3: 设置入口
 patch("app/src/main/AndroidManifest.xml",
       '        <activity\n            android:name=".ui.setup.SetupActivity"',
-      '        <activity\n            android:name=".qi.QiSyncActivity"\n            android:exported="true">\n'
-      '            <intent-filter>\n'
-      '                <action android:name="android.intent.action.VIEW" />\n'
-      '                <category android:name="android.intent.category.DEFAULT" />\n'
-      '                <category android:name="android.intent.category.BROWSABLE" />\n'
-      '                <data android:scheme="qi" android:host="pair" />\n'
-      '            </intent-filter>\n'
-      '        </activity>\n\n'
+      '        <activity\n            android:name=".qi.QiSyncActivity"\n            android:exported="false" />\n\n'
       '        <activity\n            android:name=".ui.setup.SetupActivity"')
 patch("app/src/main/java/com/osfans/trime/ui/main/MainFragment.kt",
       "        preferenceScreen = preferenceManager.createPreferenceScreen(requireContext()).apply {\n",
       "        preferenceScreen = preferenceManager.createPreferenceScreen(requireContext()).apply {\n"
       '            addPreference(\n'
       '                title = "输入方式与剪贴板同步",\n'
-      '                summary = "小鹤双拼 / 全拼切换；扫码与电脑配对",\n'
+      '                summary = "小鹤双拼 / 全拼切换；剪贴板同步与添加设备",\n'
       '                icon = R.drawable.ic_clipboard_24,\n'
       '            ) {\n'
       '                startActivity(android.content.Intent(requireContext(), com.osfans.trime.qi.QiSyncActivity::class.java))\n'

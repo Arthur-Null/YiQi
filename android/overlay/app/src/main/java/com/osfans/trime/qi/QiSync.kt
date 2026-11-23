@@ -14,7 +14,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
+import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Request
 import okhttp3.Response
 import okhttp3.WebSocket
@@ -30,7 +32,7 @@ import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
 
 // C5: 与 sync/protocol 相同：配对密钥派生认证令牌与内容密钥，内容用 AES-GCM 加密后才离开手机。
-class QiKey private constructor(val server: String, private val raw: ByteArray) {
+class QiKey(val server: String, val raw: ByteArray) {
     companion object {
         fun parse(code: String): QiKey? {
             val uri = runCatching { Uri.parse(code.trim()) }.getOrNull() ?: return null
@@ -48,6 +50,19 @@ class QiKey private constructor(val server: String, private val raw: ByteArray) 
         init(SecretKeySpec(raw, "HmacSHA256"))
         doFinal(label.toByteArray())
     }
+
+    // C5: 本机保存的同步组凭据（服务器地址与同步组密钥）
+    val pairCode: String
+        get() = Uri.Builder().scheme("qi").authority("pair")
+            .appendQueryParameter("s", server)
+            .appendQueryParameter("k", Base64.encodeToString(raw, Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP))
+            .build().toString()
+
+    val verifier: String
+        get() = Base64.encodeToString(
+            java.security.MessageDigest.getInstance("SHA-256").digest(authToken.toByteArray()),
+            Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP,
+        )
 
     val authToken: String =
         Base64.encodeToString(derive("qi-auth-v1"), Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP)
@@ -75,6 +90,7 @@ object QiSync : CoroutineScope by CoroutineScope(SupervisorJob() + Dispatchers.I
         Connecting("连接中…"),
         Connected("已连接"),
         Offline("暂时连不上服务器，稍后自动重试"),
+        Invalid("这台设备已不在同步组中，请重新加入"),
     }
 
     private val _status = MutableStateFlow(Status.Unpaired)
@@ -112,13 +128,40 @@ object QiSync : CoroutineScope by CoroutineScope(SupervisorJob() + Dispatchers.I
         connect()
     }
 
-    fun pair(code: String): Boolean {
-        val k = QiKey.parse(code) ?: return false
-        prefs.edit().putString("pair_code", code.trim()).apply()
+    fun save(k: QiKey) {
+        prefs.edit().putString("pair_code", k.pairCode).apply()
         key = k
         retryDelay = 1000L
         connect()
-        return true
+    }
+
+    fun leave() {
+        stopInvite()
+        prefs.edit().remove("pair_code").apply()
+        key = null
+        connect()
+    }
+
+    val server: String? get() = key?.server
+
+    // C5: 「添加设备」：生成 6 位临时密码，新设备凭它取得同步组密钥
+    @Volatile
+    var inviteCode: String? = null
+        private set
+
+    fun startInvite(): String? {
+        val s = socket ?: return null
+        if (_status.value != Status.Connected) return null
+        val code = String.format(java.util.Locale.ROOT, "%06d", SecureRandom().nextInt(1_000_000))
+        inviteCode = code
+        s.send(JSONObject().put("t", "invite").toString())
+        return code
+    }
+
+    fun stopInvite() {
+        if (inviteCode == null) return
+        inviteCode = null
+        socket?.send(JSONObject().put("t", "invite-end").toString())
     }
 
     fun reconnectNow() {
@@ -156,7 +199,13 @@ object QiSync : CoroutineScope by CoroutineScope(SupervisorJob() + Dispatchers.I
                 }
 
                 override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                    if (gen == generation) retry(gen)
+                    if (gen != generation) return
+                    // C5: 服务器不再认可这台设备（同步组已在服务器上重置）时不再重试
+                    if (response?.code == 401) {
+                        _status.value = Status.Invalid
+                    } else {
+                        retry(gen)
+                    }
                 }
 
                 override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
@@ -178,8 +227,14 @@ object QiSync : CoroutineScope by CoroutineScope(SupervisorJob() + Dispatchers.I
 
     private fun receive(frame: String) {
         val f = JSONObject(frame)
-        if (f.optString("t") != "clip") return
         val k = key ?: return
+        if (f.optString("t") == "join") {
+            val code = inviteCode ?: return
+            val reply = QiPairing.sealGroupKey(f.getString("d"), code, k)
+            socket?.send(JSONObject().put("t", "join-ok").put("j", f.getString("j")).put("d", reply).toString())
+            return
+        }
+        if (f.optString("t") != "clip") return
         val clip = JSONObject(String(k.open(f.getString("d")), Charsets.UTF_8))
         val text = clip.getString("text")
         synchronized(lock) {
@@ -215,5 +270,133 @@ object QiSync : CoroutineScope by CoroutineScope(SupervisorJob() + Dispatchers.I
             synchronized(lock) { pending = clip }
             reconnectNow()
         }
+    }
+}
+
+// C5, C7: 注册同步组与新设备加入（与电脑端、服务器同一协议：P-256 密钥交换 + 6 位临时密码）
+object QiPairing {
+    sealed class Outcome {
+        class Ok(val key: QiKey) : Outcome()
+        class Fail(val message: String) : Outcome()
+    }
+
+    private val http = OkHttpClient.Builder().callTimeout(40, TimeUnit.SECONDS).build()
+
+    // C7: 服务器地址由用户填写
+    fun serverUrl(input: String): String? {
+        var t = input.trim()
+        if (t.isEmpty()) return null
+        if (t.startsWith("https://")) t = "wss://" + t.removePrefix("https://")
+        if (t.startsWith("http://")) t = "ws://" + t.removePrefix("http://")
+        if (!t.startsWith("wss://") && !t.startsWith("ws://")) t = "wss://$t"
+        val u = Uri.parse(t)
+        if (u.host.isNullOrEmpty()) return null
+        return if (u.path.isNullOrEmpty() || u.path == "/") u.buildUpon().path("/v1/ws").build().toString() else t
+    }
+
+    private fun endpoint(server: String, path: String): String {
+        val u = Uri.parse(server)
+        return u.buildUpon().scheme(if (u.scheme == "ws") "http" else "https").path(path).build().toString()
+    }
+
+    private fun post(url: String, body: JSONObject): Pair<Int, String?> = try {
+        val req = okhttp3.Request.Builder().url(url)
+            .post(body.toString().toRequestBody("application/json".toMediaType())).build()
+        http.newCall(req).execute().use { it.code to it.body?.string() }
+    } catch (e: Exception) {
+        -1 to e.message
+    }
+
+    private fun randomRaw() = ByteArray(32).also { SecureRandom().nextBytes(it) }
+
+    fun register(serverInput: String, code: String): Outcome {
+        val server = serverUrl(serverInput) ?: return Outcome.Fail("服务器地址不对，请填写例如 yiqi.example.com。")
+        val k = QiKey(server, randomRaw())
+        val (status, err) = post(endpoint(server, "/v1/claim"), JSONObject().put("code", code.filter(Char::isDigit)).put("v", k.verifier))
+        return when (status) {
+            200 -> Outcome.Ok(k)
+            403 -> Outcome.Fail("临时密码不对，请核对后重试。")
+            409 -> Outcome.Fail("这台服务器已经注册过同步组。请在已同步的设备上点「添加设备」，用它给出的 6 位临时密码加入。")
+            else -> Outcome.Fail("连不上服务器（${err ?: "HTTP $status"}），请检查地址和网络。")
+        }
+    }
+
+    fun join(serverInput: String, code: String): Outcome {
+        val server = serverUrl(serverInput) ?: return Outcome.Fail("服务器地址不对，请填写例如 yiqi.example.com。")
+        val kp = newKeyPair()
+        val (status, body) = post(endpoint(server, "/v1/join"), JSONObject().put("t", "join").put("d", encode(kp.public)))
+        return when (status) {
+            200 -> try {
+                val reply = JSONObject(body ?: "").getString("d")
+                Outcome.Ok(QiKey(server, openGroupKey(kp, reply, code.filter(Char::isDigit))))
+            } catch (e: Exception) {
+                Outcome.Fail("临时密码不对，请核对后重试。")
+            }
+            404 -> Outcome.Fail("没有找到等待加入的邀请。请先在已同步的设备上点「添加设备」，并保持那个窗口打开。")
+            429 -> Outcome.Fail("尝试次数过多，请在已同步的设备上重新点「添加设备」获取新的临时密码。")
+            else -> Outcome.Fail("连不上服务器（${body ?: "HTTP $status"}），请检查地址和网络。")
+        }
+    }
+
+    private fun newKeyPair(): java.security.KeyPair = java.security.KeyPairGenerator.getInstance("EC").run {
+        initialize(java.security.spec.ECGenParameterSpec("secp256r1"))
+        generateKeyPair()
+    }
+
+    private fun pad32(b: java.math.BigInteger): ByteArray {
+        val raw = b.toByteArray()
+        return when {
+            raw.size == 32 -> raw
+            raw.size > 32 -> raw.copyOfRange(raw.size - 32, raw.size)
+            else -> ByteArray(32 - raw.size) + raw
+        }
+    }
+
+    private fun encode(pub: java.security.PublicKey): String {
+        val w = (pub as java.security.interfaces.ECPublicKey).w
+        return Base64.encodeToString(byteArrayOf(4) + pad32(w.affineX) + pad32(w.affineY), Base64.NO_WRAP)
+    }
+
+    private fun decode(b64: String, params: java.security.spec.ECParameterSpec): java.security.PublicKey {
+        val b = Base64.decode(b64, Base64.NO_WRAP)
+        require(b.size == 65 && b[0] == 4.toByte())
+        val point = java.security.spec.ECPoint(
+            java.math.BigInteger(1, b.copyOfRange(1, 33)),
+            java.math.BigInteger(1, b.copyOfRange(33, 65)),
+        )
+        return java.security.KeyFactory.getInstance("EC").generatePublic(java.security.spec.ECPublicKeySpec(point, params))
+    }
+
+    private fun joinKey(kp: java.security.KeyPair, peer: java.security.PublicKey, code: String): SecretKeySpec {
+        val shared = javax.crypto.KeyAgreement.getInstance("ECDH").run {
+            init(kp.private)
+            doPhase(peer, true)
+            generateSecret()
+        }
+        val k = Mac.getInstance("HmacSHA256").run {
+            init(SecretKeySpec(shared, "HmacSHA256"))
+            doFinal("yiqi-join-v1|$code".toByteArray())
+        }
+        return SecretKeySpec(k, "AES")
+    }
+
+    fun sealGroupKey(peerB64: String, code: String, key: QiKey): String {
+        val kp = newKeyPair()
+        val peer = decode(peerB64, (kp.public as java.security.interfaces.ECPublicKey).params)
+        val nonce = ByteArray(12).also { SecureRandom().nextBytes(it) }
+        val c = Cipher.getInstance("AES/GCM/NoPadding")
+        c.init(Cipher.ENCRYPT_MODE, joinKey(kp, peer, code), GCMParameterSpec(128, nonce))
+        return encode(kp.public) + "." + Base64.encodeToString(nonce + c.doFinal(key.raw), Base64.NO_WRAP)
+    }
+
+    private fun openGroupKey(kp: java.security.KeyPair, reply: String, code: String): ByteArray {
+        val (pa, e) = reply.split(".", limit = 2)
+        val peer = decode(pa, (kp.public as java.security.interfaces.ECPublicKey).params)
+        val raw = Base64.decode(e, Base64.NO_WRAP)
+        val c = Cipher.getInstance("AES/GCM/NoPadding")
+        c.init(Cipher.DECRYPT_MODE, joinKey(kp, peer, code), GCMParameterSpec(128, raw, 0, 12))
+        val k = c.doFinal(raw, 12, raw.size - 12)
+        require(k.size == 32)
+        return k
     }
 }

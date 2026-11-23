@@ -1,25 +1,49 @@
-// C3, C5: 两份独立剪贴板模拟两台 Mac，经中转同步长文本；由 sync/relay/macos_test.go 驱动。
+// C3, C5, C7: 两份独立剪贴板模拟两台 Mac：第一台凭服务器临时密码注册同步组，第二台凭「添加设备」的临时密码加入，
+// 然后经中转同步长文本；由 sync/relay/macos_test.go 驱动。
 import AppKit
 
-let code = CommandLine.arguments[1]
-let long = try! String(contentsOfFile: CommandLine.arguments[2], encoding: .utf8)
+let server = CommandLine.arguments[1]
+let setupCode = CommandLine.arguments[2]
+let long = try! String(contentsOfFile: CommandLine.arguments[3], encoding: .utf8)
 let pa = NSPasteboard(name: .init("qi-test-a")), pb = NSPasteboard(name: .init("qi-test-b"))
 pa.clearContents(); pb.clearContents()
-let a = ClipboardSync(pasteboard: pa, deviceID: "mac-a")
-let b = ClipboardSync(pasteboard: pb, deviceID: "mac-b")
-a.configure(QiKey(pairCode: code)!)
-b.configure(QiKey(pairCode: code)!)
 
 func wait(_ what: String, _ cond: () -> Bool) {
-    let end = Date().addingTimeInterval(10)
+    let end = Date().addingTimeInterval(15)
     while !cond() {
         if Date() > end { print("TIMEOUT \(what)"); exit(1) }
         RunLoop.main.run(until: Date().addingTimeInterval(0.05))
     }
     print("OK \(what)")
+    fflush(stdout)
 }
 
-wait("connected") { a.status == .connected && b.status == .connected }
+var registered: Result<QiKey, Pairing.Failure>?
+Pairing.register(server: server, code: "000000" == setupCode ? "111111" : "000000") { registered = $0 }
+wait("register-wrong-code-rejected") { if case .failure(.wrongCode) = registered { return true }; return false }
+registered = nil
+Pairing.register(server: server, code: setupCode) { registered = $0 }
+wait("registered") { if case .success = registered { return true }; return false }
+guard case .success(let ka) = registered else { exit(1) }
+print("PAIRED \(ka.pairCode)")
+
+let a = ClipboardSync(pasteboard: pa, deviceID: "mac-a")
+a.configure(ka)
+wait("a-connected") { a.status == .connected }
+let code = a.startInvite()!
+RunLoop.main.run(until: Date().addingTimeInterval(0.3))
+var joined: Result<QiKey, Pairing.Failure>?
+Pairing.join(server: server, code: code == "000000" ? "111111" : "000000") { joined = $0 }
+wait("join-wrong-code-rejected") { if case .failure(.wrongCode) = joined { return true }; return false }
+joined = nil
+Pairing.join(server: server, code: code) { joined = $0 }
+wait("joined") { if case .success = joined { return true }; return false }
+guard case .success(let kb) = joined, kb.raw == ka.raw else { print("TIMEOUT key-mismatch"); exit(1) }
+a.stopInvite()
+
+let b = ClipboardSync(pasteboard: pb, deviceID: "mac-b")
+b.configure(kb)
+wait("b-connected") { b.status == .connected }
 pa.clearContents(); pa.setString(long, forType: .string)
 wait("b-received-long") { pb.string(forType: .string) == long }
 print("READY")

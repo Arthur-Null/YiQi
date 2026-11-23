@@ -12,17 +12,39 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     func applicationDidFinishLaunching(_ n: Notification) {
         Rime.installData()
         LoginItem.ensure()
+        NSApp.mainMenu = editMenu()
+        let first = !FileManager.default.fileExists(atPath: Store.dir.appendingPathComponent("welcomed").path)
+        // C1: 每次启动都确认输入法已登记并启用，第一次还直接切换过去
+        let ready = Rime.ensureInputSource(select: first)
         item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         let menu = NSMenu()
         menu.delegate = self
         item.menu = menu
         refreshTitle()
         observers.append(model.$scheme.sink { [weak self] _ in DispatchQueue.main.async { self?.refreshTitle() } })
-        if !FileManager.default.fileExists(atPath: Store.dir.appendingPathComponent("welcomed").path) {
+        if first || !ready || model.pairCode == nil {
             FileManager.default.createFile(atPath: Store.dir.appendingPathComponent("welcomed").path, contents: nil)
-            Rime.selectInputSource()
             openSettings()
         }
+    }
+
+    // C5: 设置窗口里要能粘贴配对码；菜单栏程序没有主菜单，粘贴快捷键靠这个编辑菜单生效
+    private func editMenu() -> NSMenu {
+        let main = NSMenu()
+        let appItem = NSMenuItem()
+        appItem.submenu = NSMenu()
+        appItem.submenu?.addItem(withTitle: "退出一炁", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        main.addItem(appItem)
+        let editItem = NSMenuItem()
+        let edit = NSMenu(title: "编辑")
+        edit.addItem(withTitle: "撤销", action: Selector(("undo:")), keyEquivalent: "z")
+        edit.addItem(withTitle: "剪切", action: #selector(NSText.cut(_:)), keyEquivalent: "x")
+        edit.addItem(withTitle: "复制", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+        edit.addItem(withTitle: "粘贴", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        edit.addItem(withTitle: "全选", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+        editItem.submenu = edit
+        main.addItem(editItem)
+        return main
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
@@ -32,13 +54,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func refreshTitle() {
         item.button?.title = model.scheme.short
-        item.button?.toolTip = "一炁输入法：\(model.scheme.title)（Ctrl+Shift+1 切换）"
+        item.button?.toolTip = "一炁输入法：\(model.scheme.title)（\(model.hotkey.label) 切换）"
     }
 
     func menuNeedsUpdate(_ menu: NSMenu) {
         model.scheme = Rime.scheme
         menu.removeAllItems()
-        let head = NSMenuItem(title: "输入方式（Ctrl+Shift+1 切换）", action: nil, keyEquivalent: "")
+        let head = NSMenuItem(title: "输入方式（\(model.hotkey.label) 切换）", action: nil, keyEquivalent: "")
         head.isEnabled = false
         menu.addItem(head)
         for s in Scheme.allCases {
@@ -52,7 +74,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let st = NSMenuItem(title: "剪贴板同步：\(model.status.label)", action: nil, keyEquivalent: "")
         st.isEnabled = false
         menu.addItem(st)
-        let open = NSMenuItem(title: model.pairCode == nil ? "设置剪贴板同步…" : "配对手机或其他电脑…",
+        let open = NSMenuItem(title: model.pairCode == nil ? "设置…" : "设置与配对手机…",
                               action: #selector(openSettingsAction), keyEquivalent: ",")
         open.target = self
         menu.addItem(open)

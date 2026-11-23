@@ -1,6 +1,7 @@
 import AppKit
 import CryptoKit
 import Foundation
+import Security
 
 // C5: 与 sync/protocol 相同的格式：配对密钥派生认证令牌与内容密钥，内容用 AES-GCM 加密后才离开本机。
 struct QiKey {
@@ -17,6 +18,29 @@ struct QiKey {
         server = url
         self.raw = raw
     }
+
+    init(server: URL, raw: Data) {
+        self.server = server
+        self.raw = raw
+    }
+
+    // C5: 第一台设备注册时在本机生成同步组密钥
+    init(server: URL) {
+        self.server = server
+        var bytes = [UInt8](repeating: 0, count: 32)
+        _ = SecRandomCopyBytes(kSecRandomDefault, 32, &bytes)
+        raw = Data(bytes)
+    }
+
+    var pairCode: String {
+        var c = URLComponents()
+        c.scheme = "qi"
+        c.host = "pair"
+        c.queryItems = [URLQueryItem(name: "s", value: server.absoluteString), URLQueryItem(name: "k", value: raw.base64URL)]
+        return c.string!
+    }
+
+    var verifier: String { Data(SHA256.hash(data: Data(authToken.utf8))).base64URL }
 
     private func derive(_ label: String) -> Data {
         Data(HMAC<SHA256>.authenticationCode(for: Data(label.utf8), using: SymmetricKey(data: raw)))
@@ -46,7 +70,8 @@ struct Clip: Codable {
 
 private struct Frame: Codable {
     var t: String
-    var d: String
+    var d: String?
+    var j: String?
 }
 
 extension Data {
@@ -63,7 +88,7 @@ extension Data {
 }
 
 enum SyncStatus: Equatable {
-    case unpaired, connecting, connected, offline
+    case unpaired, connecting, connected, offline, invalid
 
     var label: String {
         switch self {
@@ -71,6 +96,7 @@ enum SyncStatus: Equatable {
         case .connecting: return "连接中…"
         case .connected: return "已连接"
         case .offline: return "暂时连不上服务器，稍后自动重试"
+        case .invalid: return "这台设备已不在同步组中，请重新加入"
         }
     }
 }
@@ -167,6 +193,14 @@ final class ClipboardSync: NSObject, URLSessionWebSocketDelegate {
 
     private func drop() {
         guard key != nil else { return }
+        // C5: 服务器不再认可这台设备（同步组已在服务器上重置）时不再重试
+        if (task?.response as? HTTPURLResponse)?.statusCode == 401 {
+            status = .invalid
+            task?.cancel(with: .goingAway, reason: nil)
+            task = nil
+            generation += 1
+            return
+        }
         status = .offline
         task?.cancel(with: .goingAway, reason: nil)
         task = nil
@@ -203,9 +237,12 @@ final class ClipboardSync: NSObject, URLSessionWebSocketDelegate {
                     case .data(let d): data = d
                     @unknown default: break
                     }
-                    if let data, let f = try? JSONDecoder().decode(Frame.self, from: data), f.t == "clip",
-                       let clip = try? self.key?.open(f.d) {
-                        self.apply(clip)
+                    if let data, let f = try? JSONDecoder().decode(Frame.self, from: data) {
+                        if f.t == "clip", let d = f.d, let clip = try? self.key?.open(d) {
+                            self.apply(clip)
+                        } else if f.t == "join", let d = f.d, let j = f.j {
+                            self.answerJoin(d, j)
+                        }
                     }
                     self.receive(t, gen)
                 }
@@ -231,6 +268,33 @@ final class ClipboardSync: NSObject, URLSessionWebSocketDelegate {
         send(Clip(id: UUID().uuidString, from: deviceID, ts: lastTS, text: s))
     }
 
+    // C5: 「添加设备」：生成 6 位临时密码并告诉服务器正在等新设备；新设备凭它取得同步组密钥。
+    private(set) var inviteCode: String?
+
+    func startInvite() -> String? {
+        guard task != nil, status == .connected else { return nil }
+        let code = String(format: "%06d", Int.random(in: 0..<1_000_000))
+        inviteCode = code
+        sendFrame(Frame(t: "invite"))
+        return code
+    }
+
+    func stopInvite() {
+        guard inviteCode != nil else { return }
+        inviteCode = nil
+        sendFrame(Frame(t: "invite-end"))
+    }
+
+    private func answerJoin(_ peer: String, _ id: String) {
+        guard let key, let code = inviteCode, let reply = try? Pairing.sealGroupKey(peer: peer, code: code, key: key) else { return }
+        sendFrame(Frame(t: "join-ok", d: reply, j: id))
+    }
+
+    private func sendFrame(_ f: Frame) {
+        guard let t = task, let body = try? JSONEncoder().encode(f), let s = String(data: body, encoding: .utf8) else { return }
+        t.send(.string(s)) { _ in }
+    }
+
     private func send(_ clip: Clip) {
         guard let key, let t = task, status == .connected,
               let d = try? key.seal(clip),
@@ -240,5 +304,109 @@ final class ClipboardSync: NSObject, URLSessionWebSocketDelegate {
         t.send(.string(s)) { [weak self] err in
             if err != nil { DispatchQueue.main.async { self?.pending = clip; self?.drop() } }
         }
+    }
+}
+
+// C5: 注册同步组与新设备加入
+enum Pairing {
+    enum Failure: Error {
+        case wrongCode, alreadyRegistered, noInvite, tooManyAttempts, badServer, network(String)
+
+        var message: String {
+            switch self {
+            case .wrongCode: return "临时密码不对，请核对后重试。"
+            case .alreadyRegistered: return "这台服务器已经注册过同步组。请在已同步的设备上点「添加设备」，用它给出的 6 位临时密码加入。"
+            case .noInvite: return "没有找到等待加入的邀请。请先在已同步的设备上点「添加设备」，并保持那个窗口打开。"
+            case .tooManyAttempts: return "尝试次数过多，请在已同步的设备上重新点「添加设备」获取新的临时密码。"
+            case .badServer: return "服务器地址不对，请填写例如 yiqi.example.com。"
+            case .network(let s): return "连不上服务器（\(s)），请检查地址和网络。"
+            }
+        }
+    }
+
+    // C7: 服务器地址由用户填写，可以是域名，也可以是完整地址
+    static func serverURL(_ s: String) -> URL? {
+        var t = s.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !t.isEmpty else { return nil }
+        if t.hasPrefix("https://") { t = "wss://" + t.dropFirst(8) }
+        if t.hasPrefix("http://") { t = "ws://" + t.dropFirst(7) }
+        if !t.hasPrefix("wss://") && !t.hasPrefix("ws://") { t = "wss://" + t }
+        guard var c = URLComponents(string: t), c.host?.isEmpty == false else { return nil }
+        if c.path.isEmpty || c.path == "/" { c.path = "/v1/ws" }
+        return c.url
+    }
+
+    private static func endpoint(_ server: URL, _ path: String) -> URL {
+        var c = URLComponents(url: server, resolvingAgainstBaseURL: false)!
+        c.scheme = c.scheme == "ws" ? "http" : "https"
+        c.path = path
+        return c.url!
+    }
+
+    private static func post(_ url: URL, _ body: [String: String], _ done: @escaping (Int?, Data?, String?) -> Void) {
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.timeoutInterval = 40
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try? JSONSerialization.data(withJSONObject: body)
+        URLSession.shared.dataTask(with: req) { data, resp, err in
+            DispatchQueue.main.async { done((resp as? HTTPURLResponse)?.statusCode, data, err?.localizedDescription) }
+        }.resume()
+    }
+
+    static func register(server: String, code: String, done: @escaping (Result<QiKey, Failure>) -> Void) {
+        guard let url = serverURL(server) else { done(.failure(.badServer)); return }
+        let k = QiKey(server: url)
+        post(endpoint(url, "/v1/claim"), ["code": code.filter(\.isNumber), "v": k.verifier]) { status, _, err in
+            switch status {
+            case 200: done(.success(k))
+            case 403: done(.failure(.wrongCode))
+            case 409: done(.failure(.alreadyRegistered))
+            default: done(.failure(.network(err ?? "HTTP \(status ?? 0)")))
+            }
+        }
+    }
+
+    static func join(server: String, code: String, done: @escaping (Result<QiKey, Failure>) -> Void) {
+        guard let url = serverURL(server) else { done(.failure(.badServer)); return }
+        let priv = P256.KeyAgreement.PrivateKey()
+        let digits = code.filter(\.isNumber)
+        post(endpoint(url, "/v1/join"), ["t": "join", "d": priv.publicKey.x963Representation.base64EncodedString()]) { status, data, err in
+            switch status {
+            case 200:
+                guard let data, let f = try? JSONDecoder().decode(Frame.self, from: data), let reply = f.d,
+                      let raw = try? openGroupKey(priv: priv, reply: reply, code: digits)
+                else { done(.failure(.wrongCode)); return }
+                done(.success(QiKey(server: url, raw: raw)))
+            case 404: done(.failure(.noInvite))
+            case 429: done(.failure(.tooManyAttempts))
+            default: done(.failure(.network(err ?? "HTTP \(status ?? 0)")))
+            }
+        }
+    }
+
+    private static func joinKey(_ shared: SharedSecret, _ code: String) -> SymmetricKey {
+        let raw = shared.withUnsafeBytes { Data($0) }
+        return SymmetricKey(data: Data(HMAC<SHA256>.authenticationCode(for: Data("yiqi-join-v1|\(code)".utf8),
+                                                                     using: SymmetricKey(data: raw))))
+    }
+
+    static func sealGroupKey(peer: String, code: String, key: QiKey) throws -> String {
+        guard let pd = Data(base64Encoded: peer) else { throw CocoaError(.coderReadCorrupt) }
+        let peerKey = try P256.KeyAgreement.PublicKey(x963Representation: pd)
+        let priv = P256.KeyAgreement.PrivateKey()
+        let k = joinKey(try priv.sharedSecretFromKeyAgreement(with: peerKey), code)
+        let sealed = try AES.GCM.seal(key.raw, using: k).combined!
+        return priv.publicKey.x963Representation.base64EncodedString() + "." + sealed.base64EncodedString()
+    }
+
+    static func openGroupKey(priv: P256.KeyAgreement.PrivateKey, reply: String, code: String) throws -> Data {
+        let parts = reply.split(separator: ".", maxSplits: 1).map(String.init)
+        guard parts.count == 2, let pa = Data(base64Encoded: parts[0]), let e = Data(base64Encoded: parts[1])
+        else { throw CocoaError(.coderReadCorrupt) }
+        let k = joinKey(try priv.sharedSecretFromKeyAgreement(with: P256.KeyAgreement.PublicKey(x963Representation: pa)), code)
+        let raw = try AES.GCM.open(AES.GCM.SealedBox(combined: e), using: k)
+        guard raw.count == 32 else { throw CocoaError(.coderReadCorrupt) }
+        return raw
     }
 }

@@ -1,3 +1,4 @@
+import AppKit
 import Carbon
 import Foundation
 
@@ -61,11 +62,92 @@ enum Rime {
 
     static var squirrelInstalled: Bool { FileManager.default.isExecutableFile(atPath: squirrel) }
 
-    static func selectInputSource() {
+    private static func findSource() -> TISInputSource? {
         let filter = [kTISPropertyInputSourceID as String: sourceID] as CFDictionary
-        guard let list = TISCreateInputSourceList(filter, true)?.takeRetainedValue() as? [TISInputSource],
-              let src = list.first else { return }
-        TISEnableInputSource(src)
-        TISSelectInputSource(src)
+        return (TISCreateInputSourceList(filter, true)?.takeRetainedValue() as? [TISInputSource])?.first
+    }
+
+    private static func isEnabled(_ src: TISInputSource) -> Bool {
+        guard let p = TISGetInputSourceProperty(src, kTISPropertyInputSourceIsEnabled) else { return false }
+        return CFBooleanGetValue(Unmanaged<CFBoolean>.fromOpaque(p).takeUnretainedValue())
+    }
+
+    @discardableResult
+    static func ensureInputSource(select: Bool) -> Bool {
+        guard squirrelInstalled else { return false }
+        if findSource() == nil {
+            TISRegisterInputSource(URL(fileURLWithPath: "/Library/Input Methods/Squirrel.app") as CFURL)
+        }
+        guard let src = findSource() else { return false }
+        if !isEnabled(src) {
+            TISEnableInputSource(src)
+            deploy()
+        }
+        if select { TISSelectInputSource(src) }
+        return isEnabled(src)
+    }
+
+    static var inputSourceEnabled: Bool { findSource().map(isEnabled) ?? false }
+
+    // C2: 切换快捷键由用户设置，保存为 Rime 按键写法（空格分隔的多种写法），qi_switch.lua 读取。
+    private static let hotkeyFile = userDir.appendingPathComponent("qi_hotkey.txt")
+    static let defaultHotkey = Hotkey(rime: ["Control+Shift+1", "Control+Shift+exclam"], label: "Ctrl + Shift + 1")
+
+    static var hotkey: Hotkey {
+        guard let s = try? String(contentsOf: hotkeyFile, encoding: .utf8) else { return defaultHotkey }
+        let lines = s.split(separator: "\n", maxSplits: 1).map(String.init)
+        guard lines.count == 2 else { return defaultHotkey }
+        return Hotkey(rime: lines[1].split(separator: " ").map(String.init), label: lines[0])
+    }
+
+    static func setHotkey(_ h: Hotkey) {
+        try? FileManager.default.createDirectory(at: userDir, withIntermediateDirectories: true)
+        try? "\(h.label)\n\(h.rime.joined(separator: " "))\n".write(to: hotkeyFile, atomically: true, encoding: .utf8)
+    }
+}
+
+struct Hotkey: Equatable {
+    var rime: [String]
+    var label: String
+
+    private static let names: [UInt16: (String, String?)] = [
+        0: ("a", nil), 1: ("s", nil), 2: ("d", nil), 3: ("f", nil), 4: ("h", nil), 5: ("g", nil), 6: ("z", nil),
+        7: ("x", nil), 8: ("c", nil), 9: ("v", nil), 11: ("b", nil), 12: ("q", nil), 13: ("w", nil), 14: ("e", nil),
+        15: ("r", nil), 16: ("y", nil), 17: ("t", nil), 31: ("o", nil), 32: ("u", nil), 34: ("i", nil), 35: ("p", nil),
+        37: ("l", nil), 38: ("j", nil), 40: ("k", nil), 45: ("n", nil), 46: ("m", nil),
+        18: ("1", "exclam"), 19: ("2", "at"), 20: ("3", "numbersign"), 21: ("4", "dollar"), 23: ("5", "percent"),
+        22: ("6", "asciicircum"), 26: ("7", "ampersand"), 28: ("8", "asterisk"), 25: ("9", "parenleft"),
+        29: ("0", "parenright"), 27: ("minus", "underscore"), 24: ("equal", "plus"), 33: ("bracketleft", "braceleft"),
+        30: ("bracketright", "braceright"), 42: ("backslash", "bar"), 41: ("semicolon", "colon"),
+        39: ("apostrophe", "quotedbl"), 43: ("comma", "less"), 47: ("period", "greater"), 44: ("slash", "question"),
+        50: ("grave", "asciitilde"), 49: ("space", nil), 48: ("Tab", nil),
+        122: ("F1", nil), 120: ("F2", nil), 99: ("F3", nil), 118: ("F4", nil), 96: ("F5", nil), 97: ("F6", nil),
+        98: ("F7", nil), 100: ("F8", nil), 101: ("F9", nil), 109: ("F10", nil), 103: ("F11", nil), 111: ("F12", nil),
+    ]
+
+    // C2: 由按下的组合键生成快捷键；必须带 Ctrl 或 Option（功能键 F1–F12 除外），以免和打字冲突。
+    init?(event: NSEvent) {
+        guard let (base, shifted) = Hotkey.names[event.keyCode] else { return nil }
+        let f = event.modifierFlags
+        let isF = base.hasPrefix("F") && base.count > 1
+        guard f.contains(.control) || f.contains(.option) || isF else { return nil }
+        var mods: [String] = []
+        var label: [String] = []
+        if f.contains(.control) { mods.append("Control"); label.append("Ctrl") }
+        if f.contains(.option) { mods.append("Alt"); label.append("Option") }
+        if f.contains(.shift) { mods.append("Shift"); label.append("Shift") }
+        let symbols = ["minus": "-", "equal": "=", "bracketleft": "[", "bracketright": "]", "backslash": "\\",
+                       "semicolon": ";", "apostrophe": "'", "comma": ",", "period": ".", "slash": "/", "grave": "`",
+                       "space": "Space"]
+        label.append(base.count == 1 ? base.uppercased() : (symbols[base] ?? base))
+        var rime = [(mods + [base]).joined(separator: "+")]
+        if f.contains(.shift), let sh = shifted { rime.append((mods + [sh]).joined(separator: "+")) }
+        self.rime = rime
+        self.label = label.joined(separator: " + ")
+    }
+
+    init(rime: [String], label: String) {
+        self.rime = rime
+        self.label = label
     }
 }
