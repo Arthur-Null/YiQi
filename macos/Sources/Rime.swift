@@ -16,7 +16,7 @@ enum Rime {
     static let inputMethodApp = "/Library/Input Methods/YiQiInput.app"
     static let squirrel = inputMethodApp + "/Contents/MacOS/YiQiInput"
     static let sharedDir = URL(fileURLWithPath: inputMethodApp + "/Contents/SharedSupport")
-    static let sourceID = "im.yiqi.inputmethod.pinyin"
+    static let sourceID = "im.yiqi.inputmethod.YiQi.Hans"
     private static let stateFile = userDir.appendingPathComponent("qi_schema.txt")
 
     // C2: 读写当前输入方式（与输入法内的 qi_switch.lua 共用 qi_schema.txt）。
@@ -106,7 +106,7 @@ enum Rime {
             TISRegisterInputSource(URL(fileURLWithPath: inputMethodApp) as CFURL)
         }
         if !inputSourceEnabled {
-            for id in ["im.yiqi.inputmethod", sourceID] {
+            for id in ["im.yiqi.inputmethod.YiQi", sourceID] {
                 if let s = findSource(id) { TISEnableInputSource(s) }
             }
         }

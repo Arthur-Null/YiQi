@@ -48,7 +48,7 @@ for name in ["SquirrelReloadNotification", "SquirrelSyncNotification"]:
 
 i = "InputSource.swift"
 patch(i, '    case hans = "im.rime.inputmethod.Squirrel.Hans"\n    case hant = "im.rime.inputmethod.Squirrel.Hant"\n',
-      '    case hans = "im.yiqi.inputmethod.pinyin"\n')
+      '    case hans = "im.yiqi.inputmethod.YiQi.Hans"\n')
 
 # C2: 系统输入法下拉菜单：一炁设置、有新版本时的提示、输入方式与中英切换
 c = "SquirrelInputController.swift"

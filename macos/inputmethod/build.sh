@@ -66,25 +66,25 @@ p = plistlib.load(open(src, "rb"))
 for k in [k for k in p if k.startswith("SU") or k.startswith("DT") or k == "BuildMachineOSBuild" or k == "CFBundleIconName"]:
     del p[k]
 p.update({
-    "CFBundleExecutable": "YiQiInput", "CFBundleIdentifier": "im.yiqi.inputmethod", "CFBundleName": "YiQiInput",
+    "CFBundleExecutable": "YiQiInput", "CFBundleIdentifier": "im.yiqi.inputmethod.YiQi", "CFBundleName": "YiQiInput",
     "CFBundleDisplayName": "一炁输入法", "CFBundleVersion": version, "CFBundleShortVersionString": version,
     "CFBundleIconFile": "YiQi", "InputMethodConnectionName": "YiQiInput_Connection",
-    "tsInputMethodIconFileKey": "yiqi.pdf", "TISInputSourceID": "im.yiqi.inputmethod",
+    "tsInputMethodIconFileKey": "yiqi.pdf", "TISInputSourceID": "im.yiqi.inputmethod.YiQi",
 })
 modes = p["ComponentInputModeDict"]
 hans = copy.deepcopy(modes["tsInputModeListKey"]["im.rime.inputmethod.Squirrel.Hans"])
-hans["TISInputSourceID"] = "im.yiqi.inputmethod.pinyin"
+hans["TISInputSourceID"] = "im.yiqi.inputmethod.YiQi.Hans"
 for k in ["tsInputModeAlternateMenuIconFileKey", "tsInputModeMenuIconFileKey", "tsInputModePaletteIconFileKey"]:
     hans[k] = "yiqi.pdf"
 hans["TISIconIsTemplate"] = True
-modes["tsInputModeListKey"] = {"im.yiqi.inputmethod.pinyin": hans}
-modes["tsVisibleInputModeOrderedArrayKey"] = ["im.yiqi.inputmethod.pinyin"]
+modes["tsInputModeListKey"] = {"im.yiqi.inputmethod.YiQi.Hans": hans}
+modes["tsVisibleInputModeOrderedArrayKey"] = ["im.yiqi.inputmethod.YiQi.Hans"]
 plistlib.dump(p, open(app / "Contents/Info.plist", "wb"))
 for lang, name in [("en", "YiQi"), ("zh-Hans", "一炁输入法"), ("zh-Hant", "一炁輸入法")]:
     d = app / f"Contents/Resources/{lang}.lproj"
     d.mkdir(parents=True, exist_ok=True)
-    plistlib.dump({"CFBundleDisplayName": name, "CFBundleName": name, "im.yiqi.inputmethod": name,
-                   "im.yiqi.inputmethod.pinyin": name}, open(d / "InfoPlist.strings", "wb"))
+    plistlib.dump({"CFBundleDisplayName": name, "CFBundleName": name, "im.yiqi.inputmethod.YiQi": name,
+                   "im.yiqi.inputmethod.YiQi.Hans": name}, open(d / "InfoPlist.strings", "wb"))
 PY
 rm -f "$APP/Contents/Resources/rime.pdf" "$APP/Contents/Resources/Rime.icns"
 codesign --force --deep -s - "$APP"

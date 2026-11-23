@@ -180,7 +180,7 @@ struct SettingsView: View {
                             Text("还差一步：把一炁添加到系统输入法").font(.headline).foregroundStyle(.red)
                             Text("1. 点下面的「打开输入法设置」\n2. 在「文字输入」的「输入法」一行点「编辑…」，再点左下角的 +\n3. 左边选「简体中文」，右边选「一炁输入法」，点「添加」")
                                 .font(.callout).fixedSize(horizontal: false, vertical: true)
-                            note("添加好后这里会自动消失，一炁会直接切换过去，不需要注销或重启。")
+                            note("如果列表里找不到「一炁输入法」：第一次安装后需要注销并重新登录一次 Mac，系统才会列出它。添加好后这里会自动消失，一炁会直接切换过去。")
                             Button("打开输入法设置") { Rime.openInputSourceSettings() }
                         }
                         Divider()
