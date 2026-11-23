@@ -50,10 +50,13 @@ object QiUpdate {
 
     fun download(context: Context, r: Release): File? = runCatching {
         val f = File(context.cacheDir, "YiQi-${r.version}.apk")
+        if (f.length() > 0) return f
+        val part = File(context.cacheDir, "YiQi-${r.version}.apk.part")
         http.newCall(Request.Builder().url(r.url).build()).execute().use { resp ->
             if (!resp.isSuccessful) return null
-            f.outputStream().use { out -> resp.body!!.byteStream().copyTo(out) }
+            part.outputStream().use { out -> resp.body!!.byteStream().copyTo(out) }
         }
+        part.renameTo(f)
         f
     }.getOrNull()
 
