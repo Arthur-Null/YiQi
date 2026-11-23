@@ -29,9 +29,13 @@ object QiUpdate {
         return false
     }
 
-    fun check(): Release? = runCatching {
+    fun check(): Release? = checkWithStatus().first
+
+    fun checkWithStatus(): Pair<Release?, Boolean> = runCatching { checkOrThrow() to true }.getOrElse { null to false }
+
+    private fun checkOrThrow(): Release? = run {
         val body = http.newCall(Request.Builder().url(RELEASES).header("Accept", "application/vnd.github+json").build())
-            .execute().use { it.body?.string() } ?: return null
+            .execute().use { it.body?.string() } ?: error("no response")
         val list = JSONArray(body)
         var found: Release? = null
         for (i in 0 until list.length()) {
@@ -46,7 +50,7 @@ object QiUpdate {
             }
         }
         found?.takeIf { isNewer(it.version, current) }
-    }.getOrNull()
+    }
 
     fun download(context: Context, r: Release): File? = runCatching {
         val f = File(context.cacheDir, "YiQi-${r.version}.apk")

@@ -68,6 +68,9 @@ s = s[:a] + '''  override func menu() -> NSMenu! {
       update.target = self
       menu.addItem(update)
     }
+    let check = NSMenuItem(title: "检查更新…", action: #selector(qiOpenSettings), keyEquivalent: "")
+    check.target = self
+    menu.addItem(check)
     menu.addItem(.separator())
     let flypy = qiCurrentScheme() == "double_pinyin_flypy"
     let scheme = NSMenuItem(title: "切换至\\(flypy ? "全拼" : "小鹤双拼")（\\(qiHotkeyLabel())）",
@@ -105,7 +108,9 @@ s = s[:a] + '''  override func menu() -> NSMenu! {
     let f = SquirrelApp.userDir.appending(component: "qi_schema.txt")
     try? "\\(target) menu-\\(Int(Date().timeIntervalSince1970 * 1000))\\n".write(to: f, atomically: true, encoding: .utf8)
     if session != 0 {
+      let input = rimeAPI.get_input(session).map { String(cString: $0) } ?? ""
       _ = rimeAPI.select_schema(session, target)
+      if !input.isEmpty { _ = rimeAPI.set_input(session, input) }
       rimeUpdate()
     }
   }
@@ -129,3 +134,79 @@ s = s[:a] + '''  override func menu() -> NSMenu! {
 
 ''' + s[b:]
 p.write_text(s)
+
+# C2: 候选框右侧的「双拼 / 全拼」切换按钮（横排时显示）：细分隔线 + 淡色圆角底，点一下切换
+v = "SquirrelView.swift"
+patch(v, "  var candidateRanges: [NSRange] = []\n",
+      "  var candidateRanges: [NSRange] = []\n  var qiButtonRange: NSRange?\n")
+patch(v, "    var ranges = candidateRanges\n    if preeditRange.length > 0 {",
+      "    var ranges = candidateRanges\n    if let qi = qiButtonRange { ranges.append(qi) }\n    if preeditRange.length > 0 {")
+patch(v, '''    if let color = theme.highlightedBackColor, let path = highlightedPath {
+      let layer = shapeFromPath(path: path)''', '''    if let qi = qiButtonRange,
+       let qiPath = drawPath(highlightedRange: qi, backgroundRect: backgroundRect, preeditRect: preeditRect,
+                             containingRect: containingRect, extraExpansion: 0) {
+      let full = qiPath.boundingBox
+      let inset = full.insetBy(dx: full.height * 0.08, dy: full.height * 0.16)
+      let chip = shapeFromPath(path: CGPath(roundedRect: inset, cornerWidth: inset.height * 0.3, cornerHeight: inset.height * 0.3, transform: nil))
+      chip.fillColor = (theme.labelAttrs[.foregroundColor] as? NSColor ?? .secondaryLabelColor).withAlphaComponent(0.14).cgColor
+      panelLayer.addSublayer(chip)
+      let box = full
+      let line = CGMutablePath()
+      let x = box.minX - separatorWidth / 2
+      line.move(to: CGPoint(x: x, y: box.minY + box.height * 0.22))
+      line.addLine(to: CGPoint(x: x, y: box.maxY - box.height * 0.22))
+      let sep = CAShapeLayer()
+      sep.path = line
+      sep.lineWidth = 1
+      sep.strokeColor = (theme.labelAttrs[.foregroundColor] as? NSColor ?? .separatorColor).withAlphaComponent(0.35).cgColor
+      panelLayer.addSublayer(sep)
+    }
+    if let color = theme.highlightedBackColor, let path = highlightedPath {
+      let layer = shapeFromPath(path: path)''')
+patch(v, '''          if index >= preeditRange.location && index < preeditRange.upperBound {
+            preeditIndex = index
+          } else {''', '''          if let qi = qiButtonRange, index >= qi.location && index < qi.upperBound {
+            candidateIndex = -2
+          } else if index >= preeditRange.location && index < preeditRange.upperBound {
+            preeditIndex = index
+          } else {''')
+
+p = "SquirrelPanel.swift"
+patch(p, '''    // text done!
+    view.textView.textContentStorage?.attributedString = text''', '''    view.qiButtonRange = nil
+    if linear && !vertical && !candidates.isEmpty {
+      let style = text.attribute(.paragraphStyle, at: text.length - 1, effectiveRange: nil)
+      let flypy = inputController?.qiCurrentScheme() == "double_pinyin_flypy"
+      let gap = NSMutableAttributedString(string: "    ", attributes: theme.attrs)
+      let button = NSMutableAttributedString(string: "\\u{2006}\\(flypy ? "双拼" : "全拼")\\u{2006}", attributes: theme.labelAttrs)
+      if let style {
+        gap.addAttribute(.paragraphStyle, value: style, range: NSRange(location: 0, length: gap.length))
+        button.addAttribute(.paragraphStyle, value: style, range: NSRange(location: 0, length: button.length))
+      }
+      button.addAttribute(.noBreak, value: true, range: NSRange(location: 0, length: button.length))
+      text.append(gap)
+      view.qiButtonRange = NSRange(location: text.length, length: button.length)
+      text.append(button)
+    }
+
+    // text done!
+    view.textView.textContentStorage?.attributedString = text''')
+patch(p, '''      if let index, index == self.index && index >= 0 && index < candidates.count {
+        _ = inputController?.selectCandidate(index)
+      }''', '''      if let index, index == self.index && index >= 0 && index < candidates.count {
+        _ = inputController?.selectCandidate(index)
+      }
+      if index == -2 && qiPressed {
+        inputController?.qiSwitchScheme()
+      }
+      qiPressed = false''')
+patch(p, '''      if let index, index >= 0 && index < candidates.count {
+        self.index = index
+      }
+    case .leftMouseUp:''', '''      if let index, index >= 0 && index < candidates.count {
+        self.index = index
+      }
+      qiPressed = index == -2
+    case .leftMouseUp:''')
+patch(p, "  var inputController: SquirrelInputController?\n",
+      "  var inputController: SquirrelInputController?\n  var qiPressed = false\n")

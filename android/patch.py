@@ -119,8 +119,8 @@ keys = section("preset_keys", "preset_keyboards").replace("preset_keys:\n", """p
   Qi_symbols: {label: 符, send: Eisu_toggle, select: symbols}
   Qi_number: {label: '123', send: Eisu_toggle, select: number}
   Qi_back: {label: 返回, send: Eisu_toggle, select: .default}
-  Qi_shift: {label: '⇧', send: Shift_L, shift_lock: ascii_long}
-  Qi_backspace: {label: '⌫', repeatable: true, send: BackSpace}
+  Qi_shift: {label: 'ic@apple_keyboard_shift', send: Shift_L, shift_lock: ascii_long}
+  Qi_backspace: {label: 'ic@backspace_outline', repeatable: true, send: BackSpace}
   Qi_space: {label: 空格, functional: false, send: space}
   Qi_emoji: {label: 表情, send: FUNCTION, command: liquid_keyboard, option: "表情"}
   Qi_lq_exit: {label: '←', send: FUNCTION, command: liquid_keyboard, option: "-1"}

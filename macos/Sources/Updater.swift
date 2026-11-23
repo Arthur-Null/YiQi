@@ -20,12 +20,14 @@ enum Updater {
         return false
     }
 
-    static func check(_ done: @escaping (Release?) -> Void) {
+    static func check(_ done: @escaping (Release?, Bool) -> Void) {
         var req = URLRequest(url: releases)
         req.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
         URLSession.shared.dataTask(with: req) { data, _, _ in
             var found: Release?
+            var ok = false
             if let data, let list = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
+                ok = true
                 for r in list where (r["draft"] as? Bool) != true {
                     guard let tag = r["tag_name"] as? String, let assets = r["assets"] as? [[String: Any]],
                           let pkg = assets.first(where: { ($0["name"] as? String) == "YiQi-macOS.pkg" }),
@@ -34,7 +36,7 @@ enum Updater {
                     if found == nil || isNewer(v, than: found!.version) { found = Release(version: v, download: url) }
                 }
             }
-            DispatchQueue.main.async { done(found.flatMap { isNewer($0.version, than: current) ? $0 : nil }) }
+            DispatchQueue.main.async { done(found.flatMap { isNewer($0.version, than: current) ? $0 : nil }, ok) }
         }.resume()
     }
 

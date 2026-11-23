@@ -43,9 +43,13 @@ final class Model: ObservableObject {
 
     var serverHost: String? { pairCode.flatMap(QiKey.init(pairCode:))?.server.host }
 
-    func checkUpdate() {
-        Updater.check { [weak self] r in
+    func checkUpdate(manual: Bool = false) {
+        if manual { updateMessage = "正在检查…" }
+        Updater.check { [weak self] r, ok in
             self?.update = r
+            if manual || self?.updateMessage == "正在检查…" {
+                self?.updateMessage = r != nil ? nil : (ok ? "已是最新版本" : "暂时无法检查更新，请稍后再试")
+            }
             // C2: 告诉输入法下拉菜单是否显示「有新版本」
             let flag = Store.dir.appendingPathComponent("update-available.txt")
             if let r { try? r.version.write(to: flag, atomically: true, encoding: .utf8) } else { try? FileManager.default.removeItem(at: flag) }
@@ -250,10 +254,16 @@ struct SettingsView: View {
                     note("复制的文字会在本机加密后，经你的服务器同步到同组的其他设备，在那里直接粘贴即可。")
                 }.padding(6)
             } label: { Text("剪贴板同步").font(.headline) }
+            HStack(spacing: 8) {
+                Spacer()
+                if model.update == nil, let m = model.updateMessage {
+                    Text(m).font(.caption).foregroundStyle(.secondary)
+                }
+                Text("版本 \(Updater.current)").font(.caption).foregroundStyle(.secondary)
+                Button("检查更新") { model.checkUpdate(manual: true) }.controlSize(.small)
+            }
         }
-        .overlay(alignment: .bottomTrailing) {
-            Text("版本 \(Updater.current)").font(.caption).foregroundStyle(.tertiary).padding(.trailing, 24).padding(.bottom, 4)
-        }
+
         .padding(20)
         .frame(width: 560)
     }

@@ -33,6 +33,10 @@ class QiSyncActivity : AppCompatActivity() {
     private lateinit var inviteCode: TextView
     private lateinit var inviteTimer: TextView
     private var timer: CountDownTimer? = null
+    private lateinit var update: LinearLayout
+    private lateinit var updateText: TextView
+    private lateinit var updateButton: Button
+    private var updateStatus: TextView? = null
 
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
 
@@ -55,31 +59,13 @@ class QiSyncActivity : AppCompatActivity() {
         title = "一炁输入法"
         val col = vertical().apply { setPadding(dp(20), dp(16), dp(20), dp(24)) }
 
-        val update = vertical().apply { visibility = View.GONE }
-        val updateText = text("", 16f, true)
-        val updateButton = button("下载并安装") {}
+        update = vertical().apply { visibility = View.GONE }
+        updateText = text("", 16f, true)
+        updateButton = button("下载并安装") {}
         update.addView(updateText)
         update.addView(updateButton)
         col.addView(update)
-        lifecycleScope.launch {
-            val r = withContext(Dispatchers.IO) { QiUpdate.check() } ?: return@launch
-            updateText.text = "有新版本 ${r.version}（当前 ${QiUpdate.current}）"
-            update.visibility = View.VISIBLE
-            updateButton.setOnClickListener {
-                updateButton.isEnabled = false
-                updateText.text = "正在下载 ${r.version}…"
-                lifecycleScope.launch {
-                    val apk = withContext(Dispatchers.IO) { QiUpdate.download(this@QiSyncActivity, r) }
-                    updateButton.isEnabled = true
-                    if (apk == null) {
-                        updateText.text = "下载失败，请稍后重试"
-                    } else {
-                        updateText.text = "有新版本 ${r.version}，请在弹出的窗口里点「更新」"
-                        QiUpdate.install(this@QiSyncActivity, apk)
-                    }
-                }
-            }
-        }
+        checkUpdate(manual = false)
 
         // C2: 界面可见可点的输入方式切换（与键盘工具栏按钮、电脑端共用同一记录）
         col.addView(text("输入方式", 18f, true))
@@ -140,6 +126,9 @@ class QiSyncActivity : AppCompatActivity() {
         )
 
         col.addView(text("版本 ${QiUpdate.current}", 12f))
+        updateStatus = text("", 12f)
+        col.addView(button("检查更新") { checkUpdate(manual = true) })
+        col.addView(updateStatus)
 
         val scroll = ScrollView(this).apply { addView(col) }
         ViewCompat.setOnApplyWindowInsetsListener(scroll) { v, insets ->
@@ -151,6 +140,34 @@ class QiSyncActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             QiSync.status.collect { refresh() }
+        }
+    }
+
+    private fun checkUpdate(manual: Boolean) {
+        if (manual) updateStatus?.text = "正在检查…"
+        lifecycleScope.launch {
+            val (r, ok) = withContext(Dispatchers.IO) { QiUpdate.checkWithStatus() }
+            if (r == null) {
+                if (manual) updateStatus?.text = if (ok) "已是最新版本" else "暂时无法检查更新，请稍后再试"
+                return@launch
+            }
+            updateStatus?.text = ""
+            updateText.text = "有新版本 ${r.version}（当前 ${QiUpdate.current}）"
+            update.visibility = View.VISIBLE
+            updateButton.setOnClickListener {
+                updateButton.isEnabled = false
+                updateText.text = "正在下载 ${r.version}…"
+                lifecycleScope.launch {
+                    val apk = withContext(Dispatchers.IO) { QiUpdate.download(this@QiSyncActivity, r) }
+                    updateButton.isEnabled = true
+                    if (apk == null) {
+                        updateText.text = "下载失败，请稍后重试"
+                    } else {
+                        updateText.text = "有新版本 ${r.version}，请在弹出的窗口里点「更新」"
+                        QiUpdate.install(this@QiSyncActivity, apk)
+                    }
+                }
+            }
         }
     }
 

@@ -19,13 +19,15 @@ style:
   keyboard_padding_land: 60
   key_height: 40
   key_long_text_size: 16
-  key_text_size: 22
+  key_text_size: 20
   key_width: 10.0
   label_text_size: 16
-  symbol_text_size: 10
+  symbol_text_size: 9
   round_corner: 6
   shadow_radius: 0.0
   key_border: 0
+  key_text_offset_y: 3
+  key_symbol_offset_y: -1
   key_press_offset_x: 0
   key_press_offset_y: 0
   keyboard_height: 206

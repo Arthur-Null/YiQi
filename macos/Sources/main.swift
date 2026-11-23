@@ -49,6 +49,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func openSettings() {
+        model.checkUpdate()
         if window == nil {
             let w = NSWindow(contentViewController: NSHostingController(rootView: SettingsView(model: model)))
             w.title = "一炁输入法"
