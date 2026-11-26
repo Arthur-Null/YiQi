@@ -18,12 +18,28 @@ object QiUpdate {
 
     val current: String get() = BuildConfig.VERSION_NAME
 
+    private class Ver(val core: List<Int>, val pre: List<Int>?)
+
+    private fun parse(v: String): Ver {
+        val t = v.trim().trimStart('v')
+        val core = t.substringBefore('-').split(".").map { it.toIntOrNull() ?: 0 }
+        val suffix = t.substringAfter('-', "")
+        val pre = if (suffix.isEmpty()) null else suffix.split('.', '-').mapNotNull { it.toIntOrNull() }
+        return Ver(core, pre)
+    }
+
     fun isNewer(a: String, b: String): Boolean {
-        val x = a.split(".").map { it.toIntOrNull() ?: 0 }
-        val y = b.split(".").map { it.toIntOrNull() ?: 0 }
-        for (i in 0 until maxOf(x.size, y.size)) {
-            val p = x.getOrElse(i) { 0 }
-            val q = y.getOrElse(i) { 0 }
+        val x = parse(a)
+        val y = parse(b)
+        for (i in 0 until maxOf(x.core.size, y.core.size)) {
+            val p = x.core.getOrElse(i) { 0 }
+            val q = y.core.getOrElse(i) { 0 }
+            if (p != q) return p > q
+        }
+        if (x.pre == null || y.pre == null) return x.pre == null && y.pre != null
+        for (i in 0 until maxOf(x.pre.size, y.pre.size)) {
+            val p = x.pre.getOrElse(i) { 0 }
+            val q = y.pre.getOrElse(i) { 0 }
             if (p != q) return p > q
         }
         return false

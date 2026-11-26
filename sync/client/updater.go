@@ -20,23 +20,53 @@ type Release struct {
 	DownloadURL string `json:"download_url"`
 }
 
-func IsNewer(a, b string) bool {
-	xs := strings.Split(strings.TrimPrefix(strings.TrimSpace(a), "v"), ".")
-	ys := strings.Split(strings.TrimPrefix(strings.TrimSpace(b), "v"), ".")
-	n := max(len(xs), len(ys))
-	for i := 0; i < n; i++ {
-		var p, q int
-		if i < len(xs) {
-			p, _ = strconv.Atoi(xs[i])
-		}
-		if i < len(ys) {
-			q, _ = strconv.Atoi(ys[i])
-		}
-		if p != q {
-			return p > q
+func parseVersion(v string) (core []int, pre []int, isPre bool) {
+	v = strings.TrimPrefix(strings.TrimSpace(v), "v")
+	head, suffix, found := strings.Cut(v, "-")
+	for _, p := range strings.Split(head, ".") {
+		n, _ := strconv.Atoi(p)
+		core = append(core, n)
+	}
+	if found {
+		isPre = true
+		for _, p := range strings.FieldsFunc(suffix, func(r rune) bool { return r == '.' || r == '-' }) {
+			if n, err := strconv.Atoi(p); err == nil {
+				pre = append(pre, n)
+			}
 		}
 	}
-	return false
+	return
+}
+
+func cmpInts(x, y []int) int {
+	for i := 0; i < max(len(x), len(y)); i++ {
+		var p, q int
+		if i < len(x) {
+			p = x[i]
+		}
+		if i < len(y) {
+			q = y[i]
+		}
+		if p != q {
+			if p > q {
+				return 1
+			}
+			return -1
+		}
+	}
+	return 0
+}
+
+func IsNewer(a, b string) bool {
+	xc, xp, xIsPre := parseVersion(a)
+	yc, yp, yIsPre := parseVersion(b)
+	if c := cmpInts(xc, yc); c != 0 {
+		return c > 0
+	}
+	if !xIsPre || !yIsPre {
+		return !xIsPre && yIsPre
+	}
+	return cmpInts(xp, yp) > 0
 }
 
 type ghRelease struct {

@@ -18,7 +18,7 @@ def patch(rel, old, new, count=1):
 patch("app/build.gradle.kts", '    id("com.osfans.trime.opencc-data")\n', "")
 patch("app/build.gradle.kts", 'applicationId = "com.osfans.trime"', 'applicationId = "im.yiqi.input"')
 patch("app/build.gradle.kts", "minSdk = 21", "minSdk = 24")
-major, minor, micro = (int(x) for x in VERSION.split("."))
+major, minor, micro = (int(x) for x in VERSION.split("-")[0].split("."))
 patch("app/build.gradle.kts", "versionCode = 20261101", f"versionCode = {20261101 + major * 10000 + minor * 100 + micro}")
 patch("app/build.gradle.kts", 'versionName = "3.3.13"', f'versionName = "{VERSION}"')
 patch("app/build.gradle.kts", 'resValue("string", "trime_app_name", "@string/app_name_release")',
