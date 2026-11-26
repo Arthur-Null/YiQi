@@ -56,6 +56,7 @@ final class KeyboardViewController: UIInputViewController {
         super.viewWillAppear(animated)
         engine.startIfNeeded()
         engine.syncSchemaFromStore()
+        keyboardView.setHapticLevel(QiStore.hapticLevel)
         currentSnapshot = engine.snapshot()
 
         // C3: 键盘弹出时连接中转同步剪贴板；若刚收到其他设备复制的文本，立即在候选栏展示并写入系统剪贴板。

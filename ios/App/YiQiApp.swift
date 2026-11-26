@@ -18,6 +18,15 @@ final class AppModel: ObservableObject {
     @Published var betaUpdates = QiStore.betaUpdates {
         didSet { QiStore.betaUpdates = betaUpdates; checkUpdate(manual: true) }
     }
+    // 按键震动强度：选中后立即按该档震一下，让用户感受手感
+    @Published var hapticLevel = QiStore.hapticLevel {
+        didSet {
+            QiStore.hapticLevel = hapticLevel
+            hapticPreview.setLevel(hapticLevel)
+            hapticPreview.tick()
+        }
+    }
+    private let hapticPreview = QiHaptic()
 
     let sync = QiClipboardSync()
 

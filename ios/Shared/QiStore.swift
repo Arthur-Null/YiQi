@@ -80,6 +80,20 @@ enum QiStore {
         }
     }
 
+    // 按键震动强度：0 关、1 轻、2 中、3 强；主 App 设置，键盘弹出时读取。
+    static var hapticLevel: Int {
+        get {
+            let f = containerDir.appendingPathComponent("haptic.txt")
+            guard let s = try? String(contentsOf: f, encoding: .utf8),
+                  let v = Int(s.trimmingCharacters(in: .whitespacesAndNewlines)) else { return 1 }
+            return min(max(v, 0), 3)
+        }
+        set {
+            let f = containerDir.appendingPathComponent("haptic.txt")
+            try? String(newValue).write(to: f, atomically: true, encoding: .utf8)
+        }
+    }
+
     static var deviceID: String {
         let f = containerDir.appendingPathComponent("device-id")
         if let s = try? String(contentsOf: f, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines),

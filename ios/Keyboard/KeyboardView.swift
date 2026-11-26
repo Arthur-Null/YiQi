@@ -31,7 +31,8 @@ final class KeyboardView: UIView {
     private var latestClip: String?
     private var hasFullAccess = true
     private var repeatTimer: Timer?
-    private let haptic = UIImpactFeedbackGenerator(style: .soft)
+    private let haptic = QiHaptic()
+    func setHapticLevel(_ l: Int) { haptic.setLevel(l) }
 
     private static let row1: [(String, String)] = [
         ("q", "1"), ("w", "2"), ("e", "3"), ("r", "4"), ("t", "5"),
@@ -539,8 +540,7 @@ final class KeyboardView: UIView {
     }
 
     private func tick() {
-        haptic.impactOccurred(intensity: 0.45)
-        haptic.prepare()
+        haptic.tick()
     }
 
     private func simpleKey(_ title: String, action: @escaping () -> Void) -> KeyButton {

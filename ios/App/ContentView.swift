@@ -57,6 +57,17 @@ struct ContentView: View {
                     Text("打字时也可以点键盘右上方的「双 / 全」图标随时切换。")
                 }
 
+                Section {
+                    Picker("按键震动", selection: $model.hapticLevel) {
+                        ForEach(0..<QiHaptic.levelTitles.count, id: \.self) { Text(QiHaptic.levelTitles[$0]).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                } header: {
+                    Text("按键震动")
+                } footer: {
+                    Text("选中后手机会按该强度震一下。键盘需要打开「允许完全访问」才能震动；改完后重新弹出键盘即生效。")
+                }
+
                 // C3, C5, C7: 剪贴板同步
                 Section {
                     HStack(spacing: 8) {
