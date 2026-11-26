@@ -119,6 +119,9 @@ final class KeyboardView: UIView {
         case .clipboard: buildClipboard()
         case .candidates: buildCandidateGrid()
         }
+        if page == .qwerty || page == .numbers || page == .symbols {
+            enableCursorDrag(in: content)
+        }
     }
 
     private func buildQwerty() {
@@ -507,7 +510,7 @@ final class KeyboardView: UIView {
         ])
         letterLabels.append((ch, mainLbl))
 
-        b.addAction(UIAction { [weak self] _ in
+        b.addTapAction { [weak self] in
             guard let self else { return }
             self.tick()
             if self.shiftState != .off {
@@ -520,7 +523,7 @@ final class KeyboardView: UIView {
             } else {
                 self.onLetter?(ch)
             }
-        }, for: .touchUpInside)
+        }
 
         let lp = UILongPressGestureRecognizer(target: self, action: #selector(handleLongPress(_:)))
         lp.minimumPressDuration = 0.4
@@ -545,24 +548,22 @@ final class KeyboardView: UIView {
         b.setTitle(title, for: .normal)
         b.setTitleColor(KeyboardTheme.text, for: .normal)
         b.titleLabel?.font = .systemFont(ofSize: 17)
-        b.addAction(UIAction { [weak self] _ in self?.tick(); action() }, for: .touchUpInside)
+        b.addTapAction { [weak self] in self?.tick(); action() }
         return b
     }
 
-    // 空格键：轻点输入空格；按住左右滑动移动光标（每滑约 12pt 移动一个字符）。
     private func spaceKey(_ title: String, tap: @escaping () -> Void) -> KeyButton {
-        let b = KeyButton(normal: KeyboardTheme.keyBack, pressed: KeyboardTheme.keyHighlight)
-        b.setTitle(title, for: .normal)
-        b.setTitleColor(KeyboardTheme.text, for: .normal)
-        b.titleLabel?.font = .systemFont(ofSize: 17)
-        // 滑动过就不算点击，避免松手时多输入一个空格
-        b.addAction(UIAction { [weak self, weak b] _ in
-            guard let b, !b.dragged else { return }
-            self?.tick()
-            tap()
-        }, for: .touchUpInside)
-        b.onDrag = { [weak self] n in self?.onMoveCursor?(n) }
-        return b
+        simpleKey(title, action: tap)
+    }
+
+    // 主键盘、数字、符号页：除退格外每个键都能左右滑动移动光标。
+    private func enableCursorDrag(in view: UIView) {
+        for sub in view.subviews {
+            if let k = sub as? KeyButton, !k.dragDisabled {
+                k.onDrag = { [weak self] n in self?.onMoveCursor?(n) }
+            }
+            enableCursorDrag(in: sub)
+        }
     }
 
     private func textFnKey(_ title: String, action: @escaping () -> Void) -> KeyButton {
@@ -570,14 +571,14 @@ final class KeyboardView: UIView {
         b.setTitle(title, for: .normal)
         b.setTitleColor(KeyboardTheme.text, for: .normal)
         b.titleLabel?.font = .systemFont(ofSize: 15, weight: .medium)
-        b.addAction(UIAction { [weak self] _ in self?.tick(); action() }, for: .touchUpInside)
+        b.addTapAction { [weak self] in self?.tick(); action() }
         return b
     }
 
     private func iconFnKey(_ sfName: String, action: @escaping () -> Void) -> KeyButton {
         let b = KeyButton(normal: KeyboardTheme.fnBack, pressed: KeyboardTheme.fnHighlight)
         b.setIcon(sfName)
-        b.addAction(UIAction { [weak self] _ in self?.tick(); action() }, for: .touchUpInside)
+        b.addTapAction { [weak self] in self?.tick(); action() }
         return b
     }
 
@@ -587,7 +588,7 @@ final class KeyboardView: UIView {
         b.setTitle(title, for: .normal)
         b.setTitleColor(KeyboardTheme.accentText, for: .normal)
         b.titleLabel?.font = .systemFont(ofSize: 15, weight: .medium)
-        b.addAction(UIAction { [weak self] _ in self?.tick(); action() }, for: .touchUpInside)
+        b.addTapAction { [weak self] in self?.tick(); action() }
         return b
     }
 
@@ -595,6 +596,7 @@ final class KeyboardView: UIView {
     private func backspaceKey() -> KeyButton {
         let b = KeyButton(normal: KeyboardTheme.fnBack, pressed: KeyboardTheme.fnHighlight)
         b.setIcon("delete.left")
+        b.dragDisabled = true
         b.addAction(UIAction { [weak self] _ in
             guard let self else { return }
             self.tick()
@@ -700,10 +702,19 @@ final class KeyButton: UIButton {
             UIImage.SymbolConfiguration(pointSize: 18, weight: .medium))
     }
 
-    // 空格键左右滑动：直接跟踪手指水平位移（不经过手势识别器，不受宿主 App 手势干扰），
-    // 每移动约 12pt 回调一次字符偏移。
+    // 按住任意键左右滑动移动光标（与微信输入法一致）：直接跟踪手指水平位移
+    //（不经过手势识别器，不受宿主 App 手势干扰），每移动约 12pt 回调一次字符偏移。
+    // 滑动过的这次按键不再算点击。退格键设 dragDisabled（按住是连续删除）。
     var onDrag: ((Int) -> Void)?
+    var dragDisabled = false
     private(set) var dragged = false
+
+    func addTapAction(_ handler: @escaping () -> Void) {
+        addAction(UIAction { [weak self] _ in
+            guard self?.dragged != true else { return }
+            handler()
+        }, for: .touchUpInside)
+    }
     private var dragStartX: CGFloat = 0
     private var dragApplied: CGFloat = 0
 
@@ -715,7 +726,7 @@ final class KeyButton: UIButton {
     }
 
     override func continueTracking(_ touch: UITouch, with event: UIEvent?) -> Bool {
-        if let onDrag {
+        if let onDrag, !dragDisabled {
             let dx = touch.location(in: self).x - dragStartX
             if !dragged && abs(dx) > 10 { dragged = true }
             if dragged {
