@@ -24,7 +24,6 @@ final class KeyboardView: UIView {
     private var lastShiftTap: TimeInterval = 0
     private var letterLabels: [(ch: String, label: UILabel)] = []
     private weak var shiftButton: KeyButton?
-    private var spacePanApplied: CGFloat = 0
     private var asciiMode = false
     private var returnLabel = "换行"
     private var showGlobe = false
@@ -32,7 +31,7 @@ final class KeyboardView: UIView {
     private var latestClip: String?
     private var hasFullAccess = true
     private var repeatTimer: Timer?
-    private let haptic = UIImpactFeedbackGenerator(style: .light)
+    private let haptic = UIImpactFeedbackGenerator(style: .soft)
 
     private static let row1: [(String, String)] = [
         ("q", "1"), ("w", "2"), ("e", "3"), ("r", "4"), ("t", "5"),
@@ -331,7 +330,7 @@ final class KeyboardView: UIView {
                     b.titleLabel?.font = .systemFont(ofSize: 24)
                     b.backgroundColor = .clear
                     b.addAction(UIAction { [weak self] _ in
-                        self?.haptic.impactOccurred()
+                        self?.tick()
                         self?.onDirectText?(em)
                     }, for: .touchUpInside)
                     r.addArrangedSubview(b)
@@ -537,7 +536,7 @@ final class KeyboardView: UIView {
     }
 
     private func tick() {
-        haptic.impactOccurred()
+        haptic.impactOccurred(intensity: 0.45)
         haptic.prepare()
     }
 
@@ -552,27 +551,18 @@ final class KeyboardView: UIView {
 
     // 空格键：轻点输入空格；按住左右滑动移动光标（每滑约 12pt 移动一个字符）。
     private func spaceKey(_ title: String, tap: @escaping () -> Void) -> KeyButton {
-        let b = simpleKey(title, action: tap)
-        let pan = UIPanGestureRecognizer(target: self, action: #selector(handleSpacePan(_:)))
-        b.addGestureRecognizer(pan)
+        let b = KeyButton(normal: KeyboardTheme.keyBack, pressed: KeyboardTheme.keyHighlight)
+        b.setTitle(title, for: .normal)
+        b.setTitleColor(KeyboardTheme.text, for: .normal)
+        b.titleLabel?.font = .systemFont(ofSize: 17)
+        // 滑动过就不算点击，避免松手时多输入一个空格
+        b.addAction(UIAction { [weak self, weak b] _ in
+            guard let b, !b.dragged else { return }
+            self?.tick()
+            tap()
+        }, for: .touchUpInside)
+        b.onDrag = { [weak self] n in self?.onMoveCursor?(n) }
         return b
-    }
-
-    @objc private func handleSpacePan(_ gr: UIPanGestureRecognizer) {
-        let step: CGFloat = 12
-        switch gr.state {
-        case .began:
-            spacePanApplied = 0
-        case .changed:
-            let t = gr.translation(in: gr.view).x
-            let n = Int(((t - spacePanApplied) / step).rounded(.towardZero))
-            if n != 0 {
-                spacePanApplied += CGFloat(n) * step
-                onMoveCursor?(n)
-            }
-        default:
-            spacePanApplied = 0
-        }
     }
 
     private func textFnKey(_ title: String, action: @escaping () -> Void) -> KeyButton {
@@ -708,6 +698,35 @@ final class KeyButton: UIButton {
     func setIcon(_ sfName: String) {
         iconView.image = UIImage(systemName: sfName, withConfiguration:
             UIImage.SymbolConfiguration(pointSize: 18, weight: .medium))
+    }
+
+    // 空格键左右滑动：直接跟踪手指水平位移（不经过手势识别器，不受宿主 App 手势干扰），
+    // 每移动约 12pt 回调一次字符偏移。
+    var onDrag: ((Int) -> Void)?
+    private(set) var dragged = false
+    private var dragStartX: CGFloat = 0
+    private var dragApplied: CGFloat = 0
+
+    override func beginTracking(_ touch: UITouch, with event: UIEvent?) -> Bool {
+        dragStartX = touch.location(in: self).x
+        dragApplied = 0
+        dragged = false
+        return super.beginTracking(touch, with: event)
+    }
+
+    override func continueTracking(_ touch: UITouch, with event: UIEvent?) -> Bool {
+        if let onDrag {
+            let dx = touch.location(in: self).x - dragStartX
+            if !dragged && abs(dx) > 10 { dragged = true }
+            if dragged {
+                let n = Int(((dx - dragApplied) / 12).rounded(.towardZero))
+                if n != 0 {
+                    dragApplied += CGFloat(n) * 12
+                    onDrag(n)
+                }
+            }
+        }
+        return super.continueTracking(touch, with: event)
     }
 
     override var isHighlighted: Bool {
