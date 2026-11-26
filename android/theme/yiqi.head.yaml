@@ -97,8 +97,8 @@ preset_color_schemes:
     hilited_key_symbol_color: 0x8E929B
     off_key_back_color: 0xFFFFFF
     off_key_text_color: 0x1F1F1F
-    on_key_back_color: 0xFFFFFF
-    on_key_text_color: 0x2FB36D
+    on_key_back_color: 0xC8CDD6
+    on_key_text_color: 0x1F1F1F
     hilited_off_key_back_color: 0xC8CDD6
     hilited_on_key_back_color: 0xB8BEC8
     fn_back: 0xC8CDD6
@@ -139,8 +139,8 @@ preset_color_schemes:
     hilited_key_symbol_color: 0xA6A6AC
     off_key_back_color: 0x4A4A4D
     off_key_text_color: 0xF5F5F7
-    on_key_back_color: 0x6A6A6E
-    on_key_text_color: 0x3CC87D
+    on_key_back_color: 0x343437
+    on_key_text_color: 0xF5F5F7
     hilited_off_key_back_color: 0x343437
     hilited_on_key_back_color: 0x2A2A2D
     fn_back: 0x343437

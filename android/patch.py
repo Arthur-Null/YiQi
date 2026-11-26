@@ -332,20 +332,25 @@ patch(KB + "KeyView.kt",
 patch(KB + "Key.kt", "    fun getLabel(): String = when {\n",
       "    fun getLabel(): String = when {\n"
       '        isShift -> when {\n'
-      '            isOn -> "ic@arrow_up_bold"\n'
-      '            parent.modifier.hasFlag(KeyEvent.META_SHIFT_ON) -> "ic@arrow_up_bold"\n'
-      '            else -> "ic@apple_keyboard_shift"\n'
+      '            isOn -> "ic@qi_shift_lock"\n'
+      '            parent.modifier.hasFlag(KeyEvent.META_SHIFT_ON) -> "ic@qi_shift_on"\n'
+      '            else -> "ic@qi_shift"\n'
       '        }\n\n')
 patch(KB + "KeyView.kt",
-      "        if (label.isIconFont) {\n            drawIcon(canvas, label, textSize.toInt(), textColor, key.keyTextOffsetX, offsetY)\n",
-      "        if (label.isIconFont) {\n            drawIcon(canvas, label, textSize.toInt(), textColor, key.keyTextOffsetX, offsetY)\n"
-      "            if (key.isShift && key.isOn) {\n"
-      "                val unit = textSize / 24f\n"
-      "                val cx = (width - paddingLeft - paddingRight) / 2f + paddingLeft + sp(key.keyTextOffsetX)\n"
-      "                val cy = (height - paddingTop - paddingBottom) / 2f + paddingTop + sp(offsetY)\n"
-      "                textPaint.color = textColor\n"
-      "                canvas.drawRoundRect(cx - 5 * unit, cy + 9.6f * unit, cx + 5 * unit, cy + 11.4f * unit, unit, unit, textPaint)\n"
-      "            }\n")
+      "        val halfSize = size / 2\n\n        val cmdName = iconName.toIconName()\n",
+      "        val halfSize = size / 2\n\n"
+      "        val qiName = iconName.removePrefix(\"ic@\")\n"
+      "        if (com.osfans.trime.qi.QiIcons.has(qiName)) {\n"
+      "            val qx = (width - paddingLeft - paddingRight) / 2f + paddingLeft + sp(offsetX)\n"
+      "            val qy = when (isTop) {\n"
+      "                true -> paddingTop + halfSize + sp(offsetY)\n"
+      "                false -> height - paddingBottom - size + sp(offsetY)\n"
+      "                null -> (height - paddingTop - paddingBottom) / 2f + paddingTop + sp(offsetY)\n"
+      "            }\n"
+      "            com.osfans.trime.qi.QiIcons.draw(canvas, qiName, qx, qy, size * 0.95f, color)\n"
+      "            return\n"
+      "        }\n\n"
+      "        val cmdName = iconName.toIconName()\n")
 patch(KB + "KeyView.kt",
       "        isSlideCursor = key.click?.isSlideCursor ?: false\n",
       "        isSlideCursor = key.click?.let {\n"
@@ -369,8 +374,8 @@ keys = section("preset_keys", "preset_keyboards").replace("preset_keys:\n", """p
   Qi_symbols: {label: 符, send: Eisu_toggle, select: symbols}
   Qi_number: {label: '123', send: Eisu_toggle, select: number}
   Qi_back: {label: 返回, send: Eisu_toggle, select: .default}
-  Qi_shift: {label: 'ic@apple_keyboard_shift', send: Shift_L}
-  Qi_backspace: {label: 'ic@backspace_outline', repeatable: true, send: BackSpace}
+  Qi_shift: {label: 'ic@qi_shift', send: Shift_L}
+  Qi_backspace: {label: 'ic@qi_backspace', repeatable: true, send: BackSpace}
   Qi_space: {label: 空格, functional: false, send: space}
   Qi_emoji: {label: 表情, send: FUNCTION, command: liquid_keyboard, option: "表情"}
   Qi_lq_exit: {label: '←', send: FUNCTION, command: liquid_keyboard, option: "-1"}
