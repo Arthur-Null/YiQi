@@ -11,7 +11,6 @@ final class KeyboardTopBar: UIView {
     var onToggleClipboardPanel: (() -> Void)?
     var onDismissKeyboard: (() -> Void)?
 
-    private let preeditBar = UIView()
     private let preeditLabel = UILabel()
     private let barContainer = UIView()
 
@@ -28,6 +27,7 @@ final class KeyboardTopBar: UIView {
     private let expandButton = UIButton(type: .system)
 
     private var suggestionText: String?
+    private var shownCandidateKey: [String] = []
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -39,33 +39,24 @@ final class KeyboardTopBar: UIView {
     private func setupUI() {
         backgroundColor = KeyboardTheme.background
 
-        let root = UIStackView(arrangedSubviews: [preeditBar, barContainer])
-        root.axis = .vertical
-        root.spacing = 0
-        root.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(root)
+        barContainer.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(barContainer)
+        let barHeight = barContainer.heightAnchor.constraint(equalToConstant: 52)
+        barHeight.priority = UILayoutPriority(999)
         NSLayoutConstraint.activate([
-            root.topAnchor.constraint(equalTo: topAnchor),
-            root.leadingAnchor.constraint(equalTo: leadingAnchor),
-            root.trailingAnchor.constraint(equalTo: trailingAnchor),
-            root.bottomAnchor.constraint(equalTo: bottomAnchor),
+            barContainer.topAnchor.constraint(equalTo: topAnchor),
+            barContainer.leadingAnchor.constraint(equalTo: leadingAnchor),
+            barContainer.trailingAnchor.constraint(equalTo: trailingAnchor),
+            barContainer.bottomAnchor.constraint(equalTo: bottomAnchor),
+            barHeight,
         ])
 
-        // 拼音预编辑条
-        preeditBar.isHidden = true
-        preeditBar.backgroundColor = KeyboardTheme.pillBack
-        preeditLabel.font = .systemFont(ofSize: 14, weight: .medium)
+        // 拼音预编辑：显示在候选词上方的一行小字
+        preeditLabel.font = .systemFont(ofSize: 13, weight: .medium)
         preeditLabel.textColor = KeyboardTheme.candidateHighlight
+        preeditLabel.lineBreakMode = .byTruncatingHead
         preeditLabel.translatesAutoresizingMaskIntoConstraints = false
-        preeditBar.addSubview(preeditLabel)
-        NSLayoutConstraint.activate([
-            preeditBar.heightAnchor.constraint(equalToConstant: 24),
-            preeditLabel.leadingAnchor.constraint(equalTo: preeditBar.leadingAnchor, constant: 12),
-            preeditLabel.trailingAnchor.constraint(lessThanOrEqualTo: preeditBar.trailingAnchor, constant: -12),
-            preeditLabel.centerYAnchor.constraint(equalTo: preeditBar.centerYAnchor),
-        ])
-
-        barContainer.heightAnchor.constraint(equalToConstant: 40).isActive = true
+        candContainer.addSubview(preeditLabel)
 
         // 空闲态：中间为同步剪贴板圆角卡片，右侧为无底色极简图标（表情 / 剪贴板 / 双全切换 / 收起）
         idleStack.axis = .horizontal
@@ -153,8 +144,13 @@ final class KeyboardTopBar: UIView {
         candContainer.addSubview(candScroll)
         candContainer.addSubview(expandButton)
         NSLayoutConstraint.activate([
+            preeditLabel.topAnchor.constraint(equalTo: candContainer.topAnchor, constant: 4),
+            preeditLabel.leadingAnchor.constraint(equalTo: candContainer.leadingAnchor, constant: 14),
+            preeditLabel.trailingAnchor.constraint(equalTo: expandButton.leadingAnchor, constant: -4),
+            preeditLabel.heightAnchor.constraint(equalToConstant: 14),
+
             candScroll.leadingAnchor.constraint(equalTo: candContainer.leadingAnchor, constant: 6),
-            candScroll.topAnchor.constraint(equalTo: candContainer.topAnchor),
+            candScroll.topAnchor.constraint(equalTo: preeditLabel.bottomAnchor, constant: 2),
             candScroll.bottomAnchor.constraint(equalTo: candContainer.bottomAnchor),
             candScroll.trailingAnchor.constraint(equalTo: expandButton.leadingAnchor, constant: -2),
 
@@ -166,8 +162,8 @@ final class KeyboardTopBar: UIView {
 
             expandButton.trailingAnchor.constraint(equalTo: candContainer.trailingAnchor, constant: -6),
             expandButton.centerYAnchor.constraint(equalTo: candContainer.centerYAnchor),
-            expandButton.widthAnchor.constraint(equalToConstant: 34),
-            expandButton.heightAnchor.constraint(equalToConstant: 34),
+            expandButton.widthAnchor.constraint(equalToConstant: 40),
+            expandButton.heightAnchor.constraint(equalToConstant: 40),
         ])
     }
 
@@ -200,7 +196,6 @@ final class KeyboardTopBar: UIView {
         }
 
         let composing = snapshot.isComposing
-        preeditBar.isHidden = snapshot.preedit.isEmpty
         preeditLabel.text = snapshot.preedit
         idleStack.isHidden = composing
         candContainer.isHidden = !composing
@@ -209,14 +204,17 @@ final class KeyboardTopBar: UIView {
         expandButton.setImage(UIImage(systemName: iconName)?.withConfiguration(
             UIImage.SymbolConfiguration(pointSize: 14, weight: .medium)), for: .normal)
 
+        let key = snapshot.candidates.map { "\($0.text)\u{1}\($0.comment)" } + ["#\(snapshot.highlightedIndex)"]
+        if key == shownCandidateKey { return }
+        shownCandidateKey = key
         candStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
         for (idx, cand) in snapshot.candidates.enumerated() {
             let b = UIButton(type: .system)
             let title = cand.comment.isEmpty ? cand.text : "\(cand.text) \(cand.comment)"
             b.setTitle(title, for: .normal)
-            b.titleLabel?.font = .systemFont(ofSize: 18, weight: idx == snapshot.highlightedIndex ? .medium : .regular)
+            b.titleLabel?.font = .systemFont(ofSize: 19, weight: idx == snapshot.highlightedIndex ? .medium : .regular)
             b.setTitleColor(idx == snapshot.highlightedIndex ? KeyboardTheme.candidateHighlight : KeyboardTheme.text, for: .normal)
-            b.contentEdgeInsets = UIEdgeInsets(top: 6, left: 10, bottom: 6, right: 10)
+            b.contentEdgeInsets = UIEdgeInsets(top: 6, left: 12, bottom: 6, right: 12)
             b.tag = idx
             b.addTarget(self, action: #selector(tapCand(_:)), for: .touchUpInside)
             candStack.addArrangedSubview(b)

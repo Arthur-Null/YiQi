@@ -14,6 +14,8 @@ final class KeyboardViewController: UIInputViewController {
     )
     private var clipSuggestion: String?
     private var dismissedClipTS: Int64 = 0
+    private var latestClipText: String?
+    private var refreshScheduled = false
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -47,6 +49,7 @@ final class KeyboardViewController: UIInputViewController {
         if hasFullAccess {
             sync.onIncomingClip = { [weak self] clip in
                 self?.clipSuggestion = clip.text
+                self?.latestClipText = clip.text
                 self?.refreshUI()
             }
             sync.dict = dictSync
@@ -57,6 +60,14 @@ final class KeyboardViewController: UIInputViewController {
         refreshUI()
     }
 
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        view.window?.gestureRecognizers?.forEach {
+            $0.delaysTouchesBegan = false
+            $0.delaysTouchesEnded = false
+        }
+    }
+
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
         sync.disconnect()
@@ -64,7 +75,12 @@ final class KeyboardViewController: UIInputViewController {
 
     override func textDidChange(_ textInput: UITextInput?) {
         super.textDidChange(textInput)
-        refreshUI()
+        guard !refreshScheduled else { return }
+        refreshScheduled = true
+        DispatchQueue.main.async { [weak self] in
+            self?.refreshScheduled = false
+            self?.refreshUI()
+        }
     }
 
     // C2: 外接蓝牙/iPad 键盘时同样支持自定义快捷键切换小鹤双拼与全拼。
@@ -128,6 +144,11 @@ final class KeyboardViewController: UIInputViewController {
             self.refreshUI()
         }
         keyboardView.onNextKeyboard = { [weak self] in self?.advanceToNextInputMode() }
+        // 空格键左右滑动移动光标；正在拼写时不动，避免拼音与光标错位
+        keyboardView.onMoveCursor = { [weak self] offset in
+            guard let self, !self.currentSnapshot.isComposing else { return }
+            self.textDocumentProxy.adjustTextPosition(byCharacterOffset: offset)
+        }
         keyboardView.onSelectCandidate = { [weak self] idx in self?.selectCandidate(idx) }
         keyboardView.onRefreshClipboard = { [weak self] in
             guard let self else { return }
@@ -141,6 +162,7 @@ final class KeyboardViewController: UIInputViewController {
     }
 
     private func loadRecentCachedClip() {
+        latestClipText = QiStore.latestClip?.text
         guard let cached = QiStore.latestClip, !cached.text.isEmpty else { return }
         let ageMs = Int64(Date().timeIntervalSince1970 * 1000) - cached.ts
         if ageMs < 100_000 && cached.ts != dismissedClipTS {
@@ -240,7 +262,7 @@ final class KeyboardViewController: UIInputViewController {
             returnLabel: returnKeyLabel,
             showGlobe: needsInputModeSwitchKey,
             candidates: currentSnapshot.candidates,
-            latestClip: QiStore.latestClip?.text,
+            latestClip: latestClipText,
             hasFullAccess: hasFullAccess
         )
     }

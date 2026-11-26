@@ -15,10 +15,16 @@ final class KeyboardView: UIView {
     var onNextKeyboard: (() -> Void)?
     var onSelectCandidate: ((Int) -> Void)?
     var onRefreshClipboard: (() -> Void)?
+    var onMoveCursor: ((Int) -> Void)?
 
     private let content = UIView()
     private var page: KeyboardPage = .qwerty
-    private var shifted = false
+    private enum ShiftState { case off, once, lock }
+    private var shiftState: ShiftState = .off
+    private var lastShiftTap: TimeInterval = 0
+    private var letterLabels: [(ch: String, label: UILabel)] = []
+    private weak var shiftButton: KeyButton?
+    private var spacePanApplied: CGFloat = 0
     private var asciiMode = false
     private var returnLabel = "换行"
     private var showGlobe = false
@@ -69,12 +75,14 @@ final class KeyboardView: UIView {
         content.translatesAutoresizingMaskIntoConstraints = false
         addSubview(content)
         NSLayoutConstraint.activate([
-            content.topAnchor.constraint(equalTo: topAnchor, constant: 4),
-            content.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 5),
-            content.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -5),
-            content.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -8),
-            heightAnchor.constraint(equalToConstant: 228),
+            content.topAnchor.constraint(equalTo: topAnchor, constant: 2),
+            content.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 2),
+            content.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -2),
+            content.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -4),
         ])
+        let h = heightAnchor.constraint(equalToConstant: 224)
+        h.priority = UILayoutPriority(999)
+        h.isActive = true
         rebuild()
     }
 
@@ -102,6 +110,7 @@ final class KeyboardView: UIView {
     }
 
     private func rebuild() {
+        letterLabels = []
         content.subviews.forEach { $0.removeFromSuperview() }
         switch page {
         case .qwerty: buildQwerty()
@@ -114,52 +123,51 @@ final class KeyboardView: UIView {
     }
 
     private func buildQwerty() {
-        let rows = vStack(spacing: 10)
+        let rows = vStack()
         // Row 1
-        let r1 = hStack(spacing: 6)
+        let r1 = hStack()
         for (ch, hint) in Self.row1 { r1.addArrangedSubview(letterKey(ch, hint: hint)) }
+        equalWidths(r1.arrangedSubviews)
         rows.addArrangedSubview(r1)
 
-        // Row 2 (inset 5% each side)
-        let r2Wrap = UIView()
-        let r2 = hStack(spacing: 6)
+        // Row 2：左右各留 5% 空白，与微信输入法一致
+        let r2 = hStack()
+        let lead = UIView(), trail = UIView()
+        r2.addArrangedSubview(lead)
         for (ch, hint) in Self.row2 { r2.addArrangedSubview(letterKey(ch, hint: hint)) }
-        r2Wrap.addSubview(r2)
-        NSLayoutConstraint.activate([
-            r2.topAnchor.constraint(equalTo: r2Wrap.topAnchor),
-            r2.bottomAnchor.constraint(equalTo: r2Wrap.bottomAnchor),
-            r2.leadingAnchor.constraint(equalTo: r2Wrap.leadingAnchor, constant: 16),
-            r2.trailingAnchor.constraint(equalTo: r2Wrap.trailingAnchor, constant: -16),
-        ])
-        rows.addArrangedSubview(r2Wrap)
+        r2.addArrangedSubview(trail)
+        let r2Keys = Array(r2.arrangedSubviews.dropFirst().dropLast())
+        equalWidths(r2Keys)
+        lead.widthAnchor.constraint(equalTo: r2.widthAnchor, multiplier: 0.05).isActive = true
+        trail.widthAnchor.constraint(equalTo: r2.widthAnchor, multiplier: 0.05).isActive = true
+        rows.addArrangedSubview(r2)
 
         // Row 3: Shift + Z..M + Backspace
-        let r3 = hStack(spacing: 6)
-        let shiftBtn = iconFnKey(shifted ? "shift.fill" : "shift") { [weak self] in
-            self?.shifted.toggle()
-            self?.rebuild()
-        }
+        let r3 = hStack()
+        let shiftBtn = iconFnKey(shiftIconName) { [weak self] in self?.tapShift() }
+        shiftButton = shiftBtn
         r3.addArrangedSubview(shiftBtn)
-        let mid3 = hStack(spacing: 6)
+        let mid3 = hStack()
         for (ch, hint) in Self.row3 { mid3.addArrangedSubview(letterKey(ch, hint: hint)) }
+        equalWidths(mid3.arrangedSubviews)
         r3.addArrangedSubview(mid3)
         let delBtn = backspaceKey()
         r3.addArrangedSubview(delBtn)
         NSLayoutConstraint.activate([
-            shiftBtn.widthAnchor.constraint(equalTo: r3.widthAnchor, multiplier: 0.135),
-            delBtn.widthAnchor.constraint(equalTo: r3.widthAnchor, multiplier: 0.135),
+            shiftBtn.widthAnchor.constraint(equalTo: r3.widthAnchor, multiplier: 0.14),
+            delBtn.widthAnchor.constraint(equalTo: r3.widthAnchor, multiplier: 0.14),
         ])
         rows.addArrangedSubview(r3)
 
         // Row 4: 符, 123, (globe), ，, 空格, 。, 中/英, 发送/换行
-        let r4 = hStack(spacing: 6)
+        let r4 = hStack()
         let symBtn = textFnKey("符") { [weak self] in self?.setPage(.symbols) }
         let numBtn = textFnKey("123") { [weak self] in self?.setPage(.numbers) }
         let commaBtn = simpleKey(asciiMode ? "," : "，") { [weak self] in
             guard let self else { return }
             self.onDirectText?(self.asciiMode ? "," : "，")
         }
-        let spaceBtn = simpleKey("空格") { [weak self] in self?.onSpace?() }
+        let spaceBtn = spaceKey("空格") { [weak self] in self?.onSpace?() }
         let periodBtn = simpleKey(asciiMode ? "." : "。") { [weak self] in
             guard let self else { return }
             self.onDirectText?(self.asciiMode ? "." : "。")
@@ -169,7 +177,7 @@ final class KeyboardView: UIView {
 
         r4.addArrangedSubview(symBtn)
         r4.addArrangedSubview(numBtn)
-        var globeBtn: UIButton?
+        var globeBtn: KeyButton?
         if showGlobe {
             let g = iconFnKey("globe") { [weak self] in self?.onNextKeyboard?() }
             r4.addArrangedSubview(g)
@@ -195,10 +203,47 @@ final class KeyboardView: UIView {
         rows.addArrangedSubview(r4)
 
         pin(rows, to: content)
+        updateLetterLabels()
+    }
+
+    // MARK: - Shift（C6：单击为下一个字母大写，快速双击为锁定大写；状态只换图标不换底色，与安卓一致）
+
+    private var shiftIconName: String {
+        switch shiftState {
+        case .off: return "shift"
+        case .once: return "shift.fill"
+        case .lock: return "capslock.fill"
+        }
+    }
+
+    private func tapShift() {
+        let now = Date().timeIntervalSinceReferenceDate
+        switch shiftState {
+        case .off:
+            shiftState = .once
+        case .once:
+            shiftState = (now - lastShiftTap < 0.35) ? .lock : .off
+        case .lock:
+            shiftState = .off
+        }
+        lastShiftTap = now
+        refreshShiftUI()
+    }
+
+    private func refreshShiftUI() {
+        shiftButton?.setImage(UIImage(systemName: shiftIconName)?.withConfiguration(
+            UIImage.SymbolConfiguration(pointSize: 17, weight: .medium)), for: .normal)
+        updateLetterLabels()
+    }
+
+    // 中文态按键帽恒为大写（微信风格）；英文态跟随 Shift。原地更新文字，不重建整个键盘。
+    private func updateLetterLabels() {
+        let upper = shiftState != .off || !asciiMode
+        for (ch, label) in letterLabels { label.text = upper ? ch.uppercased() : ch }
     }
 
     private func buildNumbers() {
-        let rows = vStack(spacing: 8)
+        let rows = vStack()
         let layout: [[(String, Bool)]] = [
             [("+", true), ("1", false), ("2", false), ("3", false), ("⌫", true)],
             [("-", true), ("4", false), ("5", false), ("6", false), (".", true)],
@@ -206,9 +251,9 @@ final class KeyboardView: UIView {
             [("返回", true), (",", false), ("0", false), ("空格", false), (returnLabel, true)],
         ]
         for (ri, row) in layout.enumerated() {
-            let h = hStack(spacing: 5)
+            let h = hStack()
             for (ci, item) in row.enumerated() {
-                let btn: UIButton
+                let btn: KeyButton
                 if item.0 == "⌫" {
                     btn = backspaceKey()
                 } else if ri == 3 && ci == 4 {
@@ -216,7 +261,7 @@ final class KeyboardView: UIView {
                 } else if item.0 == "返回" {
                     btn = textFnKey("返回") { [weak self] in self?.setPage(.qwerty) }
                 } else if item.0 == "空格" {
-                    btn = simpleKey("空格") { [weak self] in self?.onDirectText?(" ") }
+                    btn = spaceKey("空格") { [weak self] in self?.onDirectText?(" ") }
                 } else if item.1 {
                     btn = textFnKey(item.0) { [weak self] in self?.onDirectText?(item.0) }
                 } else {
@@ -232,19 +277,20 @@ final class KeyboardView: UIView {
     }
 
     private func buildSymbols() {
-        let rows = vStack(spacing: 8)
+        let rows = vStack()
         for line in Self.cnSymbols {
-            let h = hStack(spacing: 5)
+            let h = hStack()
             for (cn, en) in line {
                 let s = asciiMode ? en : cn
                 h.addArrangedSubview(simpleKey(s) { [weak self] in self?.onDirectText?(s) })
             }
+            equalWidths(h.arrangedSubviews)
             rows.addArrangedSubview(h)
         }
-        let r4 = hStack(spacing: 5)
+        let r4 = hStack()
         let back = textFnKey("返回") { [weak self] in self?.setPage(.qwerty) }
         let num = textFnKey("123") { [weak self] in self?.setPage(.numbers) }
-        let sp = simpleKey("空格") { [weak self] in self?.onDirectText?(" ") }
+        let sp = spaceKey("空格") { [weak self] in self?.onDirectText?(" ") }
         let del = backspaceKey()
         let ret = accentKey(returnLabel) { [weak self] in self?.onReturn?() }
         r4.addArrangedSubview(back)
@@ -275,7 +321,7 @@ final class KeyboardView: UIView {
         grid.translatesAutoresizingMaskIntoConstraints = false
         let cols = 8
         for i in stride(from: 0, to: Self.emojis.count, by: cols) {
-            let r = hStack(spacing: 2)
+            let r = hStack()
             for j in 0..<cols {
                 let idx = i + j
                 if idx < Self.emojis.count {
@@ -293,6 +339,7 @@ final class KeyboardView: UIView {
                     r.addArrangedSubview(UIView())
                 }
             }
+            equalWidths(r.arrangedSubviews)
             r.heightAnchor.constraint(equalToConstant: 38).isActive = true
             grid.addArrangedSubview(r)
         }
@@ -305,7 +352,7 @@ final class KeyboardView: UIView {
             grid.widthAnchor.constraint(equalTo: scroll.frameLayoutGuide.widthAnchor),
         ])
 
-        let foot = hStack(spacing: 8)
+        let foot = hStack()
         foot.heightAnchor.constraint(equalToConstant: 36).isActive = true
         let back = textFnKey("← 返回") { [weak self] in self?.setPage(.qwerty) }
         let spacer = UIView()
@@ -354,7 +401,7 @@ final class KeyboardView: UIView {
             lbl.bottomAnchor.constraint(lessThanOrEqualTo: card.bottomAnchor, constant: -12),
         ])
 
-        let actions = hStack(spacing: 8)
+        let actions = hStack()
         actions.heightAnchor.constraint(equalToConstant: 38).isActive = true
         let back = textFnKey("← 返回") { [weak self] in self?.setPage(.qwerty) }
         let refresh = textFnKey("同步") { [weak self] in self?.onRefreshClipboard?() }
@@ -391,7 +438,7 @@ final class KeyboardView: UIView {
         grid.translatesAutoresizingMaskIntoConstraints = false
         let cols = 4
         for i in stride(from: 0, to: candidates.count, by: cols) {
-            let r = hStack(spacing: 6)
+            let r = hStack()
             for j in 0..<cols {
                 let idx = i + j
                 if idx < candidates.count {
@@ -406,6 +453,7 @@ final class KeyboardView: UIView {
                     r.addArrangedSubview(UIView())
                 }
             }
+            equalWidths(r.arrangedSubviews)
             r.heightAnchor.constraint(equalToConstant: 38).isActive = true
             grid.addArrangedSubview(r)
         }
@@ -427,11 +475,11 @@ final class KeyboardView: UIView {
     }
 
     // MARK: - Key Builders
+    // 每个键的可点击区域占满整个格子（含键间空隙），只有里面的 face 是可见的圆角块，
+    // 因此手指落在两键之间时也会落到最近的键上，不会出现点不到或点偏。
 
-    private func letterKey(_ ch: String, hint: String) -> UIButton {
-        let b = UIButton(type: .custom)
-        b.backgroundColor = KeyboardTheme.keyBack
-        b.layer.cornerRadius = 6
+    private func letterKey(_ ch: String, hint: String) -> KeyButton {
+        let b = KeyButton(normal: KeyboardTheme.keyBack, pressed: KeyboardTheme.keyHighlight)
 
         let hintLbl = UILabel()
         hintLbl.text = hint
@@ -443,7 +491,7 @@ final class KeyboardView: UIView {
 
         let mainLbl = UILabel()
         mainLbl.text = ch.uppercased()
-        mainLbl.font = .systemFont(ofSize: 19, weight: .regular)
+        mainLbl.font = .systemFont(ofSize: 20, weight: .regular)
         mainLbl.textColor = KeyboardTheme.text
         mainLbl.textAlignment = .center
         mainLbl.isUserInteractionEnabled = false
@@ -452,108 +500,117 @@ final class KeyboardView: UIView {
         b.addSubview(hintLbl)
         b.addSubview(mainLbl)
         NSLayoutConstraint.activate([
-            hintLbl.topAnchor.constraint(equalTo: b.topAnchor, constant: 2),
+            hintLbl.topAnchor.constraint(equalTo: b.topAnchor, constant: 7),
             hintLbl.centerXAnchor.constraint(equalTo: b.centerXAnchor),
             mainLbl.centerXAnchor.constraint(equalTo: b.centerXAnchor),
-            mainLbl.bottomAnchor.constraint(equalTo: b.bottomAnchor, constant: -5),
+            mainLbl.bottomAnchor.constraint(equalTo: b.bottomAnchor, constant: -9),
         ])
+        letterLabels.append((ch, mainLbl))
 
-        attachHighlight(b, normal: KeyboardTheme.keyBack, pressed: KeyboardTheme.keyHighlight)
         b.addAction(UIAction { [weak self] _ in
             guard let self else { return }
-            self.haptic.impactOccurred()
-            let out = self.shifted ? ch.uppercased() : ch
-            self.onLetter?(out)
-            if self.shifted {
-                self.shifted = false
-                self.rebuild()
+            self.tick()
+            if self.shiftState != .off {
+                // 大写字母不进拼音引擎：先上屏正在输入的拼音，再直接输入大写字母
+                self.onDirectText?(ch.uppercased())
+                if self.shiftState == .once {
+                    self.shiftState = .off
+                    self.refreshShiftUI()
+                }
+            } else {
+                self.onLetter?(ch)
             }
         }, for: .touchUpInside)
 
         let lp = UILongPressGestureRecognizer(target: self, action: #selector(handleLongPress(_:)))
-        lp.minimumPressDuration = 0.42
+        lp.minimumPressDuration = 0.4
         b.accessibilityHint = hint
         b.addGestureRecognizer(lp)
-        applyKeyShadow(b)
         return b
-    }
-
-    private func applyKeyShadow(_ b: UIButton) {
-        b.layer.shadowColor = UIColor.black.cgColor
-        b.layer.shadowOffset = CGSize(width: 0, height: 1)
-        b.layer.shadowOpacity = 0.14
-        b.layer.shadowRadius = 0.5
-        b.layer.masksToBounds = false
     }
 
     @objc private func handleLongPress(_ gr: UILongPressGestureRecognizer) {
         guard gr.state == .began, let hint = gr.view?.accessibilityHint else { return }
-        haptic.impactOccurred()
+        tick()
         onDirectText?(hint)
     }
 
-    private func simpleKey(_ title: String, action: @escaping () -> Void) -> UIButton {
-        let b = UIButton(type: .custom)
+    private func tick() {
+        haptic.impactOccurred()
+        haptic.prepare()
+    }
+
+    private func simpleKey(_ title: String, action: @escaping () -> Void) -> KeyButton {
+        let b = KeyButton(normal: KeyboardTheme.keyBack, pressed: KeyboardTheme.keyHighlight)
         b.setTitle(title, for: .normal)
         b.setTitleColor(KeyboardTheme.text, for: .normal)
         b.titleLabel?.font = .systemFont(ofSize: 17)
-        b.backgroundColor = KeyboardTheme.keyBack
-        b.layer.cornerRadius = 6
-        attachHighlight(b, normal: KeyboardTheme.keyBack, pressed: KeyboardTheme.keyHighlight)
-        b.addAction(UIAction { [weak self] _ in self?.haptic.impactOccurred(); action() }, for: .touchUpInside)
-        applyKeyShadow(b)
+        b.addAction(UIAction { [weak self] _ in self?.tick(); action() }, for: .touchUpInside)
         return b
     }
 
-    private func textFnKey(_ title: String, action: @escaping () -> Void) -> UIButton {
-        let b = UIButton(type: .custom)
+    // 空格键：轻点输入空格；按住左右滑动移动光标（每滑约 12pt 移动一个字符）。
+    private func spaceKey(_ title: String, tap: @escaping () -> Void) -> KeyButton {
+        let b = simpleKey(title, action: tap)
+        let pan = UIPanGestureRecognizer(target: self, action: #selector(handleSpacePan(_:)))
+        b.addGestureRecognizer(pan)
+        return b
+    }
+
+    @objc private func handleSpacePan(_ gr: UIPanGestureRecognizer) {
+        let step: CGFloat = 12
+        switch gr.state {
+        case .began:
+            spacePanApplied = 0
+        case .changed:
+            let t = gr.translation(in: gr.view).x
+            let n = Int(((t - spacePanApplied) / step).rounded(.towardZero))
+            if n != 0 {
+                spacePanApplied += CGFloat(n) * step
+                onMoveCursor?(n)
+            }
+        default:
+            spacePanApplied = 0
+        }
+    }
+
+    private func textFnKey(_ title: String, action: @escaping () -> Void) -> KeyButton {
+        let b = KeyButton(normal: KeyboardTheme.fnBack, pressed: KeyboardTheme.fnHighlight)
         b.setTitle(title, for: .normal)
         b.setTitleColor(KeyboardTheme.text, for: .normal)
         b.titleLabel?.font = .systemFont(ofSize: 15, weight: .medium)
-        b.backgroundColor = KeyboardTheme.fnBack
-        b.layer.cornerRadius = 6
-        attachHighlight(b, normal: KeyboardTheme.fnBack, pressed: KeyboardTheme.fnHighlight)
-        b.addAction(UIAction { [weak self] _ in self?.haptic.impactOccurred(); action() }, for: .touchUpInside)
-        applyKeyShadow(b)
+        b.addAction(UIAction { [weak self] _ in self?.tick(); action() }, for: .touchUpInside)
         return b
     }
 
-    private func iconFnKey(_ sfName: String, action: @escaping () -> Void) -> UIButton {
-        let b = UIButton(type: .custom)
+    private func iconFnKey(_ sfName: String, action: @escaping () -> Void) -> KeyButton {
+        let b = KeyButton(normal: KeyboardTheme.fnBack, pressed: KeyboardTheme.fnHighlight)
         b.setImage(UIImage(systemName: sfName)?.withConfiguration(
             UIImage.SymbolConfiguration(pointSize: 17, weight: .medium)), for: .normal)
         b.tintColor = KeyboardTheme.text
-        b.backgroundColor = KeyboardTheme.fnBack
-        b.layer.cornerRadius = 6
-        attachHighlight(b, normal: KeyboardTheme.fnBack, pressed: KeyboardTheme.fnHighlight)
-        b.addAction(UIAction { [weak self] _ in self?.haptic.impactOccurred(); action() }, for: .touchUpInside)
-        applyKeyShadow(b)
+        b.addAction(UIAction { [weak self] _ in self?.tick(); action() }, for: .touchUpInside)
         return b
     }
 
-    private func accentKey(_ title: String, action: @escaping () -> Void) -> UIButton {
-        let b = UIButton(type: .custom)
+    private func accentKey(_ title: String, action: @escaping () -> Void) -> KeyButton {
+        let b = KeyButton(normal: KeyboardTheme.accentBack,
+                          pressed: KeyboardTheme.accentBack.withAlphaComponent(0.75))
         b.setTitle(title, for: .normal)
         b.setTitleColor(KeyboardTheme.accentText, for: .normal)
         b.titleLabel?.font = .systemFont(ofSize: 15, weight: .medium)
-        b.backgroundColor = KeyboardTheme.accentBack
-        b.layer.cornerRadius = 6
-        b.addAction(UIAction { [weak self] _ in self?.haptic.impactOccurred(); action() }, for: .touchUpInside)
-        applyKeyShadow(b)
+        b.addAction(UIAction { [weak self] _ in self?.tick(); action() }, for: .touchUpInside)
         return b
     }
 
-    private func backspaceKey() -> UIButton {
-        let b = UIButton(type: .custom)
+    // 退格：按下立即删除一次，按住 0.4 秒后连续删除。
+    private func backspaceKey() -> KeyButton {
+        let b = KeyButton(normal: KeyboardTheme.fnBack, pressed: KeyboardTheme.fnHighlight)
         b.setImage(UIImage(systemName: "delete.left")?.withConfiguration(
             UIImage.SymbolConfiguration(pointSize: 17, weight: .medium)), for: .normal)
         b.tintColor = KeyboardTheme.text
-        b.backgroundColor = KeyboardTheme.fnBack
-        b.layer.cornerRadius = 6
         b.addAction(UIAction { [weak self] _ in
             guard let self else { return }
-            b.backgroundColor = KeyboardTheme.fnHighlight
-            self.haptic.impactOccurred()
+            self.tick()
             self.onBackspace?()
             self.repeatTimer?.invalidate()
             self.repeatTimer = Timer.scheduledTimer(withTimeInterval: 0.4, repeats: false) { [weak self] _ in
@@ -562,35 +619,34 @@ final class KeyboardView: UIView {
                 }
             }
         }, for: .touchDown)
-        let stop = UIAction { [weak self] _ in
-            b.backgroundColor = KeyboardTheme.fnBack
+        b.addAction(UIAction { [weak self] _ in
             self?.repeatTimer?.invalidate()
             self?.repeatTimer = nil
-        }
-        b.addAction(stop, for: [.touchUpInside, .touchUpOutside, .touchCancel])
-        applyKeyShadow(b)
+        }, for: [.touchUpInside, .touchUpOutside, .touchCancel])
         return b
     }
 
-    private func attachHighlight(_ b: UIButton, normal: UIColor, pressed: UIColor) {
-        b.addAction(UIAction { _ in b.backgroundColor = pressed }, for: .touchDown)
-        b.addAction(UIAction { _ in b.backgroundColor = normal }, for: [.touchUpInside, .touchUpOutside, .touchCancel, .touchDragExit])
+    private func equalWidths(_ views: [UIView]) {
+        guard let first = views.first else { return }
+        for v in views.dropFirst() {
+            v.widthAnchor.constraint(equalTo: first.widthAnchor).isActive = true
+        }
     }
 
-    private func vStack(spacing: CGFloat) -> UIStackView {
+    private func vStack() -> UIStackView {
         let s = UIStackView()
         s.axis = .vertical
         s.distribution = .fillEqually
-        s.spacing = spacing
+        s.spacing = 0
         s.translatesAutoresizingMaskIntoConstraints = false
         return s
     }
 
-    private func hStack(spacing: CGFloat) -> UIStackView {
+    private func hStack() -> UIStackView {
         let s = UIStackView()
         s.axis = .horizontal
-        s.distribution = .fillProportionally
-        s.spacing = spacing
+        s.distribution = .fill
+        s.spacing = 0
         s.translatesAutoresizingMaskIntoConstraints = false
         return s
     }
@@ -603,5 +659,40 @@ final class KeyboardView: UIView {
             child.trailingAnchor.constraint(equalTo: parent.trailingAnchor),
             child.bottomAnchor.constraint(equalTo: parent.bottomAnchor),
         ])
+    }
+}
+
+// 键：整个格子都可点击，face 是里面可见的圆角块（按下时变色）。
+final class KeyButton: UIButton {
+    private let face = UIView()
+    private let normalColor: UIColor
+    private let pressedColor: UIColor
+
+    init(normal: UIColor, pressed: UIColor) {
+        normalColor = normal
+        pressedColor = pressed
+        super.init(frame: .zero)
+        backgroundColor = .clear
+        face.isUserInteractionEnabled = false
+        face.backgroundColor = normal
+        face.layer.cornerRadius = 6
+        face.layer.shadowColor = UIColor.black.cgColor
+        face.layer.shadowOffset = CGSize(width: 0, height: 1)
+        face.layer.shadowOpacity = 0.14
+        face.layer.shadowRadius = 0.5
+        face.translatesAutoresizingMaskIntoConstraints = false
+        insertSubview(face, at: 0)
+        NSLayoutConstraint.activate([
+            face.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 3),
+            face.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -3),
+            face.topAnchor.constraint(equalTo: topAnchor, constant: 4),
+            face.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -4),
+        ])
+    }
+
+    required init?(coder: NSCoder) { fatalError() }
+
+    override var isHighlighted: Bool {
+        didSet { face.backgroundColor = isHighlighted ? pressedColor : normalColor }
     }
 }
