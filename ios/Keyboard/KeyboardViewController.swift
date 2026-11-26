@@ -16,6 +16,7 @@ final class KeyboardViewController: UIInputViewController {
     private var dismissedClipTS: Int64 = 0
     private var latestClipText: String?
     private var refreshScheduled = false
+    private var pasteboardTimer: Timer?
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -69,6 +70,12 @@ final class KeyboardViewController: UIInputViewController {
             sync.dict = dictSync
             sync.configure(QiStore.pairCode.flatMap(QiKey.init(pairCode:)))
             sync.syncLocalPasteboardIfNeeded()
+            // C3: 键盘开着时在手机上复制（例如在同一个输入框里选中文字点「拷贝」）也要立即发出，
+            // 每秒看一次剪贴板变化计数（只读计数，不读内容，不会触发粘贴提示）。
+            pasteboardTimer?.invalidate()
+            pasteboardTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+                self?.sync.syncLocalPasteboardIfNeeded()
+            }
         }
         loadRecentCachedClip()
         refreshUI()
@@ -84,6 +91,8 @@ final class KeyboardViewController: UIInputViewController {
 
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
+        pasteboardTimer?.invalidate()
+        pasteboardTimer = nil
         sync.disconnect()
     }
 
