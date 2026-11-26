@@ -1,5 +1,5 @@
 // C2: 用真实的 Rime 引擎驱动输入方式，供 test_switch.py 校验小鹤双拼、全拼与切换。
-// C2: 每行一条命令：keys <按键序列> | schema | cands | commit | option <名> <0|1> | deployconfig <文件> | newsession
+// C2: 每行一条命令：keys <按键序列> | schema | cands | commit | option <名> <0|1> | deployconfig <文件> | sync | newsession
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,7 +18,7 @@ int main(int argc, char **argv) {
   traits.min_log_level = getenv("RIME_LOG") ? 0 : 2;
   api->setup(&traits);
   api->initialize(&traits);
-  if (argc > 4 && strcmp(argv[4], "deploy") == 0) {
+  if (getenv("QI_MAINT") || (argc > 4 && strcmp(argv[4], "deploy") == 0)) {
     api->start_maintenance(True);
     api->join_maintenance_thread();
   }
@@ -51,6 +51,16 @@ int main(int argc, char **argv) {
       printf("ok\n");
     } else if (strncmp(line, "deployconfig ", 13) == 0) {
       printf("%s\n", api->deploy_config_file(line + 13, "config_version") ? "ok" : "fail");
+    } else if (strcmp(line, "sync") == 0) {
+      // 与鼠须管一致：引擎已运行时直接同步；QI_SYNC_REINIT 时先收起引擎再同步（用于对照）
+      if (getenv("QI_SYNC_REINIT")) { api->finalize(); api->deployer_initialize(NULL); }
+      Bool ok = api->sync_user_data();
+      api->join_maintenance_thread();
+      api->finalize();
+      api->setup(&traits);
+      api->initialize(&traits);
+      s = api->create_session();
+      printf("%s\n", ok ? "ok" : "fail");
     } else if (strcmp(line, "newsession") == 0) {
       s = api->create_session();
       printf("ok\n");

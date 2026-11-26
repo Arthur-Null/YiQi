@@ -2,7 +2,7 @@
 -- 快捷键（默认 Ctrl+Shift+1，可在设置中更改）在两者间切换；界面（菜单栏、手机键盘按钮）写入 qi_schema.txt 请求切换。
 -- qi_schema.txt 是"当前输入方式"的唯一记录，内容为 "<方案名> <序号>"，所有会话按它对齐。
 
-local SCHEMAS = { "double_pinyin_flypy", "rime_ice" }
+local SCHEMAS = { "rime_frost_double_pinyin_flypy", "rime_frost" }
 local DEFAULT_HOTKEYS = "Control+Shift+1 Control+Shift+exclam"
 
 QI_SWITCH = QI_SWITCH or {}

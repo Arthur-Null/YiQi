@@ -24,6 +24,7 @@ final class Model: ObservableObject {
     private var monitor: Any?
 
     init() {
+        sync.dict = DictSync()
         sync.onStatus = { [weak self] s in self?.status = s }
         checkUpdate()
         Timer.scheduledTimer(withTimeInterval: 6 * 3600, repeats: true) { [weak self] _ in self?.checkUpdate() }

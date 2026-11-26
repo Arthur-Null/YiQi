@@ -111,6 +111,7 @@ func newApp(version string) *App {
 	rime.EnsureUserCopies(sharedRimeDir())
 	clip := WinClipboard{}
 	syncer := client.NewSyncer(store.DeviceID(), clip)
+	syncer.Dict = &client.DictSync{Dirs: []string{rimeUserDir()}, Trigger: syncRimeUserData}
 	ctx, cancel := context.WithCancel(context.Background())
 
 	a := &App{

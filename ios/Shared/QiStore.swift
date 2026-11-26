@@ -2,8 +2,8 @@ import Foundation
 
 // C2: 小鹤双拼与全拼方案标识，与 qi_switch.lua 和其他端完全一致。
 enum QiScheme: String, CaseIterable {
-    case flypy = "double_pinyin_flypy"
-    case quanpin = "rime_ice"
+    case flypy = "rime_frost_double_pinyin_flypy"
+    case quanpin = "rime_frost"
 
     var title: String { self == .flypy ? "小鹤双拼" : "全拼" }
     var short: String { self == .flypy ? "小鹤" : "全拼" }

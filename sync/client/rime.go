@@ -13,8 +13,8 @@ import (
 type Scheme string
 
 const (
-	SchemeFlypy   Scheme = "double_pinyin_flypy"
-	SchemeQuanpin Scheme = "rime_ice"
+	SchemeFlypy   Scheme = "rime_frost_double_pinyin_flypy"
+	SchemeQuanpin Scheme = "rime_frost"
 )
 
 func (s Scheme) Title() string {

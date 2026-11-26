@@ -8,7 +8,7 @@ import unittest
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 HARNESS = os.path.join(ROOT, "build", "rime_harness")
 DATA = os.path.join(ROOT, "build", "rime-data")
-FLYPY, QUANPIN = "double_pinyin_flypy", "rime_ice"
+FLYPY, QUANPIN = "rime_frost_double_pinyin_flypy", "rime_frost"
 
 
 def build():
@@ -130,10 +130,10 @@ class UserCustomTest(unittest.TestCase):
         try:
             with open(os.path.join(user, "default.custom.yaml"), "w") as f:
                 f.write("patch:\n  menu/page_size: 7\n")
-            with open(os.path.join(user, "double_pinyin_flypy.custom.yaml"), "w") as f:
+            with open(os.path.join(user, "rime_frost_double_pinyin_flypy.custom.yaml"), "w") as f:
                 f.write("patch:\n  schema/name: 我的小鹤\n")
             Rime(user, deploy=True).close()
-            with open(os.path.join(user, "build", "double_pinyin_flypy.schema.yaml")) as f:
+            with open(os.path.join(user, "build", "rime_frost_double_pinyin_flypy.schema.yaml")) as f:
                 compiled = f.read()
             self.assertIn("我的小鹤", compiled)
             self.assertIn("qi_switch", compiled)

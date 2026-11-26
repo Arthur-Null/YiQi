@@ -485,8 +485,8 @@ class QiSyncActivity : AppCompatActivity() {
     }
 
     companion object {
-        const val FLYPY = "double_pinyin_flypy"
-        const val QUANPIN = "rime_ice"
+        const val FLYPY = "rime_frost_double_pinyin_flypy"
+        const val QUANPIN = "rime_frost"
         private val stateFile get() = File(DataManager.userDataDir, "qi_schema.txt")
 
         fun currentScheme(): String = runCatching { stateFile.readText().trim().split(" ").first() }.getOrNull()

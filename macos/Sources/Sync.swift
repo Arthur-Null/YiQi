@@ -54,6 +54,18 @@ struct QiKey {
         return try AES.GCM.seal(plain, using: encKey).combined!.base64EncodedString()
     }
 
+    // C9: 词库快照：压缩后加密，附加认证数据 "dict" 与剪贴板内容区分
+    func sealDict(_ text: Data) throws -> String {
+        let box = try AES.GCM.seal(try Gzip.compress(text), using: encKey, authenticating: Data("dict".utf8))
+        return box.combined!.base64EncodedString()
+    }
+
+    func openDict(_ d: String) throws -> Data {
+        guard let raw = Data(base64Encoded: d) else { throw CocoaError(.coderReadCorrupt) }
+        let zipped = try AES.GCM.open(AES.GCM.SealedBox(combined: raw), using: encKey, authenticating: Data("dict".utf8))
+        return try Gzip.decompress(zipped)
+    }
+
     func open(_ d: String) throws -> Clip {
         guard let raw = Data(base64Encoded: d) else { throw CocoaError(.coderReadCorrupt) }
         let plain = try AES.GCM.open(AES.GCM.SealedBox(combined: raw), using: encKey)
@@ -68,10 +80,11 @@ struct Clip: Codable {
     var text: String
 }
 
-private struct Frame: Codable {
+struct Frame: Codable {
     var t: String
     var d: String?
     var j: String?
+    var f: String?
 }
 
 extension Data {
@@ -159,6 +172,8 @@ final class ClipboardSync: NSObject, URLSessionWebSocketDelegate {
     private var pending: Clip?
     private var pollTimer: Timer?
     private var pingTimer: Timer?
+    // C9: 用户词库同步；为空表示不同步词库
+    var dict: DictSync?
 
     init(pasteboard: NSPasteboard = .general, deviceID: String = Store.deviceID) {
         pb = pasteboard
@@ -200,6 +215,7 @@ final class ClipboardSync: NSObject, URLSessionWebSocketDelegate {
     }
 
     private func drop() {
+        dict?.disconnected()
         guard key != nil else { return }
         // C5: 服务器不再认可这台设备（同步组已在服务器上重置）时不再重试
         if (task?.response as? HTTPURLResponse)?.statusCode == 401 {
@@ -225,6 +241,7 @@ final class ClipboardSync: NSObject, URLSessionWebSocketDelegate {
         status = .connected
         retry = 1
         if let p = pending { pending = nil; send(p) }
+        dict?.connected { [weak self] text in self?.sendDict(text) }
     }
 
     func urlSession(_ session: URLSession, task t: URLSessionTask, didCompleteWithError error: Error?) {
@@ -248,6 +265,9 @@ final class ClipboardSync: NSObject, URLSessionWebSocketDelegate {
                     if let data, let f = try? JSONDecoder().decode(Frame.self, from: data) {
                         if f.t == "clip", let d = f.d, let clip = try? self.key?.open(d) {
                             self.apply(clip)
+                        } else if f.t == "dict", let d = f.d, let from = f.f, from != self.deviceID,
+                                  let text = try? self.key?.openDict(d) {
+                            self.dict?.receive(from: from, text: text)
                         } else if f.t == "join", let d = f.d, let j = f.j {
                             self.answerJoin(d, j)
                         }
@@ -296,6 +316,14 @@ final class ClipboardSync: NSObject, URLSessionWebSocketDelegate {
     private func answerJoin(_ peer: String, _ id: String) {
         guard let key, let code = inviteCode, let reply = try? Pairing.sealGroupKey(peer: peer, code: code, key: key) else { return }
         sendFrame(Frame(t: "join-ok", d: reply, j: id))
+    }
+
+    private func sendDict(_ text: Data) {
+        guard let key, let t = task, status == .connected, let d = try? key.sealDict(text),
+              let body = try? JSONEncoder().encode(Frame(t: "dict", d: d, f: deviceID)),
+              let s = String(data: body, encoding: .utf8)
+        else { return }
+        t.send(.string(s)) { _ in }
     }
 
     private func sendFrame(_ f: Frame) {

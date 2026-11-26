@@ -100,3 +100,17 @@ func deployRime() {
 		return
 	}
 }
+
+// C9: 请输入法服务做一次「同步用户资料」：导出本机词库快照，并合并其他设备的快照。
+func syncRimeUserData() error {
+	for _, name := range []string{"YiQiDeployer.exe", "WeaselDeployer.exe"} {
+		deployer := filepath.Join(exeDir(), name)
+		if _, err := os.Stat(deployer); err != nil {
+			continue
+		}
+		cmd := exec.Command(deployer, "/sync")
+		cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+		return cmd.Run()
+	}
+	return os.ErrNotExist
+}

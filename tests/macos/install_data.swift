@@ -14,23 +14,23 @@ func exists(_ name: String) -> Bool { fm.fileExists(atPath: user.appendingPathCo
 func check(_ ok: Bool, _ what: String) { print(ok ? "OK \(what)" : "FAIL \(what)"); if !ok { exit(1) } }
 func sha(_ s: String) -> String { SHA256.hash(data: Data(s.utf8)).map { String(format: "%02x", $0) }.joined() }
 
-for (n, t) in [("rime_ice.dict.yaml", "dict v2"), ("custom_phrase.txt", "phrase v2"), ("lua/qi_switch.lua", "lua v2"), ("build/x.bin", "bin")] {
+for (n, t) in [("rime_frost.dict.yaml", "dict v2"), ("custom_phrase.txt", "phrase v2"), ("lua/qi_switch.lua", "lua v2"), ("build/x.bin", "bin")] {
     write(shared, n, t)
 }
-write(user, "rime_ice.dict.yaml", "dict v1")
+write(user, "rime_frost.dict.yaml", "dict v1")
 write(user, "custom_phrase.txt", "my phrases")
 write(user, "lua/qi_switch.lua", "lua v1")
 write(user, "build/x.bin", "user build")
-write(user, "rime_ice.custom.yaml", "# C2: 旧版一炁的调整")
+write(user, "rime_frost.custom.yaml", "# C2: 旧版一炁的调整")
 write(user, "squirrel.custom.yaml", "patch: {}")
-write(user, "qi_schema.txt", "rime_ice 1")
-let manifest = ["rime_ice.dict.yaml": sha("dict v1"), "custom_phrase.txt": sha("phrase v1"), "lua/qi_switch.lua": sha("lua v1")]
+write(user, "qi_schema.txt", "rime_frost 1")
+let manifest = ["rime_frost.dict.yaml": sha("dict v1"), "custom_phrase.txt": sha("phrase v1"), "lua/qi_switch.lua": sha("lua v1")]
 try! JSONEncoder().encode(manifest).write(to: user.appendingPathComponent("qi_installed.json"))
 
 check(Rime.cleanUp(userDir: user, shared: shared), "cleanup ran")
-check(!exists("rime_ice.dict.yaml") && !exists("lua/qi_switch.lua"), "unmodified old copies removed")
+check(!exists("rime_frost.dict.yaml") && !exists("lua/qi_switch.lua"), "unmodified old copies removed")
 check(exists("custom_phrase.txt"), "user-edited file kept")
-check(!exists("rime_ice.custom.yaml"), "legacy qi patch removed")
+check(!exists("rime_frost.custom.yaml"), "legacy qi patch removed")
 check(exists("squirrel.custom.yaml") && exists("qi_schema.txt") && exists("build/x.bin"), "user's own files kept")
 check(!exists("qi_installed.json"), "old manifest removed")
 try? fm.removeItem(at: root)

@@ -87,17 +87,17 @@ inline std::string QiCurrentScheme() {
   std::ifstream in(QiRimeUserDir() + L"\\qi_schema.txt");
   std::string id;
   if (in >> id) {
-    if (id == "double_pinyin_flypy" || id == "rime_ice") return id;
+    if (id == "rime_frost_double_pinyin_flypy" || id == "rime_frost") return id;
   }
-  return "double_pinyin_flypy";
+  return "rime_frost_double_pinyin_flypy";
 }
 
 inline bool QiIsFlypy() {
-  return QiCurrentScheme() == "double_pinyin_flypy";
+  return QiCurrentScheme() == "rime_frost_double_pinyin_flypy";
 }
 
 inline std::wstring QiToggleSchemeAndWrite() {
-  std::string next = QiIsFlypy() ? "rime_ice" : "double_pinyin_flypy";
+  std::string next = QiIsFlypy() ? "rime_frost" : "rime_frost_double_pinyin_flypy";
   CreateDirectoryW(QiAppDataDir().c_str(), nullptr);
   CreateDirectoryW(QiRimeUserDir().c_str(), nullptr);
   auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -107,7 +107,7 @@ inline std::wstring QiToggleSchemeAndWrite() {
   if (out) {
     out << next << " panel-" << ms << "\n";
   }
-  return next == "double_pinyin_flypy" ? L"double_pinyin_flypy" : L"rime_ice";
+  return next == "rime_frost_double_pinyin_flypy" ? L"rime_frost_double_pinyin_flypy" : L"rime_frost";
 }
 
 inline std::wstring QiHotkeyLabel() {

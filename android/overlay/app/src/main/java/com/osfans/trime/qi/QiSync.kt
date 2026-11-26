@@ -81,6 +81,25 @@ class QiKey(val server: String, val raw: ByteArray) {
         c.init(Cipher.DECRYPT_MODE, encKey, GCMParameterSpec(128, raw, 0, 12))
         return c.doFinal(raw, 12, raw.size - 12)
     }
+
+    // C9: 词库快照：压缩后加密，附加认证数据 "dict" 与剪贴板内容区分
+    fun sealDict(text: ByteArray): String {
+        val zipped = java.io.ByteArrayOutputStream().also { o -> java.util.zip.GZIPOutputStream(o).use { it.write(text) } }
+        val nonce = ByteArray(12).also { SecureRandom().nextBytes(it) }
+        val c = Cipher.getInstance("AES/GCM/NoPadding")
+        c.init(Cipher.ENCRYPT_MODE, encKey, GCMParameterSpec(128, nonce))
+        c.updateAAD("dict".toByteArray())
+        return Base64.encodeToString(nonce + c.doFinal(zipped.toByteArray()), Base64.NO_WRAP)
+    }
+
+    fun openDict(d: String): ByteArray {
+        val raw = Base64.decode(d, Base64.NO_WRAP)
+        val c = Cipher.getInstance("AES/GCM/NoPadding")
+        c.init(Cipher.DECRYPT_MODE, encKey, GCMParameterSpec(128, raw, 0, 12))
+        c.updateAAD("dict".toByteArray())
+        val zipped = c.doFinal(raw, 12, raw.size - 12)
+        return java.util.zip.GZIPInputStream(zipped.inputStream()).use { it.readBytes() }
+    }
 }
 
 // C3: 同步最新一条文本；收到后写入系统剪贴板（常规粘贴可用），同时出现在候选栏的剪贴板提示里。
@@ -108,6 +127,11 @@ object QiSync : CoroutineScope by CoroutineScope(SupervisorJob() + Dispatchers.I
     private var lastText: String? = null
     private var lastTs = 0L
     private var pending: JSONObject? = null
+
+    // C9: 用户词库同步：借用 Rime 自带的「同步用户资料」导出本机快照、合并其他设备的快照
+    private var dictJob: Job? = null
+    private val dictKick = kotlinx.coroutines.channels.Channel<Unit>(kotlinx.coroutines.channels.Channel.CONFLATED)
+    private var dictSent: Int? = null
 
     private val deviceId: String by lazy {
         prefs.getString("device_id", null) ?: UUID.randomUUID().toString().also {
@@ -174,6 +198,7 @@ object QiSync : CoroutineScope by CoroutineScope(SupervisorJob() + Dispatchers.I
     private fun connect() {
         generation++
         retryJob?.cancel()
+        dictJob?.cancel()
         socket?.cancel()
         socket = null
         val k = key ?: run {
@@ -191,6 +216,7 @@ object QiSync : CoroutineScope by CoroutineScope(SupervisorJob() + Dispatchers.I
                     _status.value = Status.Connected
                     retryDelay = 1000L
                     synchronized(lock) { pending?.also { pending = null } }?.let { send(it) }
+                    startDict(gen)
                 }
 
                 override fun onMessage(webSocket: WebSocket, text: String) {
@@ -234,6 +260,13 @@ object QiSync : CoroutineScope by CoroutineScope(SupervisorJob() + Dispatchers.I
             socket?.send(JSONObject().put("t", "join-ok").put("j", f.getString("j")).put("d", reply).toString())
             return
         }
+        if (f.optString("t") == "dict") {
+            val from = f.optString("f")
+            if (from != deviceId && QiDict.valid(from)) {
+                if (QiDict.store(from, k.openDict(f.getString("d")))) dictKick.trySend(Unit)
+            }
+            return
+        }
         if (f.optString("t") != "clip") return
         val clip = JSONObject(String(k.open(f.getString("d")), Charsets.UTF_8))
         val text = clip.getString("text")
@@ -260,6 +293,30 @@ object QiSync : CoroutineScope by CoroutineScope(SupervisorJob() + Dispatchers.I
                 .put("text", text)
         }
         send(clip)
+    }
+
+    private fun startDict(gen: Int) {
+        dictJob?.cancel()
+        dictJob = launch {
+            delay(5_000)
+            var first = true
+            while (gen == generation) {
+                if (!first) {
+                    kotlinx.coroutines.withTimeoutOrNull(30 * 60_000L) {
+                        dictKick.receive()
+                        delay(20_000)
+                    }
+                }
+                first = false
+                runCatching { QiDict.sync() }
+                val text = QiDict.ownSnapshot() ?: continue
+                val fp = QiDict.fingerprint(text)
+                if (fp != dictSent && gen == generation) {
+                    val frame = JSONObject().put("t", "dict").put("f", deviceId).put("d", key?.sealDict(text) ?: continue)
+                    if (socket?.send(frame.toString()) == true) dictSent = fp
+                }
+            }
+        }
     }
 
     private fun send(clip: JSONObject) {

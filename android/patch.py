@@ -33,7 +33,7 @@ patch("app/src/main/java/com/osfans/trime/data/prefs/AppPrefs.kt",
       "DATA_STORAGE_MODE, DataStorageMode.EXTERNAL_SYNC)", "DATA_STORAGE_MODE, DataStorageMode.APP_STORAGE)")
 patch("app/src/main/java/com/osfans/trime/core/data/UserDataManager.kt",
       "          - schema: luna_pinyin\n          - schema: luna_pinyin_simp\n",
-      "          - schema: double_pinyin_flypy\n          - schema: rime_ice\n")
+      "          - schema: rime_frost_double_pinyin_flypy\n          - schema: rime_frost\n")
 patch("app/src/main/java/com/osfans/trime/ui/setup/SetupActivity.kt",
       "        viewPager.isUserInputEnabled = modeSetupDone\n\n        prevButton.isGone = isFirstPage\n",
       "        viewPager.isUserInputEnabled = false\n\n        prevButton.isGone = viewPager.currentItem <= 1\n")

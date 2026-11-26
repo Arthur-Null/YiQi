@@ -3,13 +3,13 @@
 default:
   menu/page_size: 7
   schema_list:
-    - schema: double_pinyin_flypy
-    - schema: rime_ice
-double_pinyin_flypy:
+    - schema: rime_frost_double_pinyin_flypy
+    - schema: rime_frost
+rime_frost_double_pinyin_flypy:
   schema/name: 小鹤双拼
   "engine/processors/@before 0": lua_processor@*qi_switch
   "switches/@next": { name: qi_flypy, reset: 1, states: [ 全拼, 小鹤双拼 ] }
-rime_ice:
+rime_frost:
   schema/name: 全拼
   "engine/processors/@before 0": lua_processor@*qi_switch
   "switches/@next": { name: qi_flypy, reset: 0, states: [ 全拼, 小鹤双拼 ] }

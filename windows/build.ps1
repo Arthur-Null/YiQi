@@ -11,11 +11,11 @@ $WeaselZip = "$Root\build\dl\weasel-$WeaselVersion.0-installer.exe"
 
 New-Item -ItemType Directory -Force -Path "$BuildDir", "$Stage\data", "$Root\build\dl", "$Root\dist" | Out-Null
 
-# 1. 准备雾凇拼音与一炁补丁（含 weasel.yaml）
-$RimeIceCommit = "927e1cf1d3eeb9bf4be85e3f684dba4dd485b6f6"
-$RimeSrc = "$Root\build\src\rime-ice"
+# 1. 准备白霜拼音与一炁补丁（含 weasel.yaml）
+$RimeIceCommit = "caa8ac9d013307670f81b71b42b53b0296d3af05"
+$RimeSrc = "$Root\build\src\rime-frost"
 if (-not (Test-Path "$RimeSrc\.git")) {
-    git clone -q https://github.com/iDvel/rime-ice.git $RimeSrc
+    git clone -q https://github.com/gaboolic/rime-frost.git $RimeSrc
 }
 git -C $RimeSrc fetch -q --depth 1 origin $RimeIceCommit
 git -C $RimeSrc checkout -q $RimeIceCommit
@@ -23,16 +23,18 @@ git -C $RimeSrc checkout -q $RimeIceCommit
 $RimeOut = "$BuildDir\rime-data"
 if (Test-Path $RimeOut) { Remove-Item -Recurse -Force $RimeOut }
 New-Item -ItemType Directory -Force -Path $RimeOut | Out-Null
-$Exclude = @(".git", ".github", "others", "README.md", "AGENTS.md", "build",
-    "double_pinyin.schema.yaml", "double_pinyin_abc.schema.yaml",
-    "double_pinyin_jiajia.schema.yaml", "double_pinyin_mspy.schema.yaml",
-    "double_pinyin_sogou.schema.yaml", "double_pinyin_ziguang.schema.yaml",
-    "t9.schema.yaml")
+$Exclude = @(".git", ".github", "others", "README.md", "AGENTS.md", "build", "cn_dicts_wb",
+    "luna_pinyin.dict.yaml", "melt_eng_t9.schema.yaml",
+    "rime_frost_14key.schema.yaml", "rime_frost_t9.schema.yaml", "rime_frost_stroke_t9.schema.yaml",
+    "rime_frost_double_pinyin.schema.yaml", "rime_frost_double_pinyin_14key.schema.yaml",
+    "rime_frost_double_pinyin_abc.schema.yaml", "rime_frost_double_pinyin_flypy_14key.schema.yaml",
+    "rime_frost_double_pinyin_mspy.schema.yaml", "rime_frost_double_pinyin_sogou.schema.yaml",
+    "rime_frost_double_pinyin_ziguang.schema.yaml")
 Get-ChildItem -Force $RimeSrc | Where-Object { $Exclude -notcontains $_.Name } | ForEach-Object {
     Copy-Item -Recurse -Force $_.FullName "$RimeOut\$($_.Name)"
 }
 Copy-Item -Recurse -Force "$Root\rime\*" $RimeOut
-foreach ($pair in @("default:default", "rime_ice.schema:rime_ice", "double_pinyin_flypy.schema:double_pinyin_flypy", "weasel:weasel")) {
+foreach ($pair in @("default:default", "rime_frost.schema:rime_frost", "rime_frost_double_pinyin_flypy.schema:rime_frost_double_pinyin_flypy", "weasel:weasel")) {
     $parts = $pair.Split(":")
     $target = "$RimeOut\$($parts[0]).yaml"
     if (-not (Test-Path $target)) { Set-Content -Path $target -Value "" -Encoding UTF8 }

@@ -25,7 +25,8 @@ func TestMacClientInterop(t *testing.T) {
 	root, _ := filepath.Abs("../..")
 	bin := filepath.Join(t.TempDir(), "peer")
 	build := exec.Command("swiftc", "-O", "-o", bin,
-		filepath.Join(root, "macos/Sources/Sync.swift"), filepath.Join(root, "macos/Sources/Rime.swift"),
+		filepath.Join(root, "macos/Sources/Sync.swift"), filepath.Join(root, "macos/Sources/DictSync.swift"),
+		filepath.Join(root, "macos/Sources/Rime.swift"),
 		filepath.Join(root, "tests/macos/main.swift"))
 	build.Stderr = os.Stderr
 	if err := build.Run(); err != nil {
@@ -44,7 +45,7 @@ func TestMacClientInterop(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
-	setup, _ := NewSetupCode(dir, time.Minute)
+	setup, _ := NewSetupCode(dir, time.Minute, "")
 	peer := exec.CommandContext(ctx, bin, wsURL, setup, textFile)
 	out, _ := peer.StdoutPipe()
 	peer.Stderr = os.Stderr
@@ -54,6 +55,7 @@ func TestMacClientInterop(t *testing.T) {
 	var k protocol.Key
 	var other *websocket.Conn
 	frames := make(chan protocol.Clip, 8)
+	dicts := make(chan []byte, 8)
 	sc := bufio.NewScanner(out)
 	for sc.Scan() {
 		line := sc.Text()
@@ -80,6 +82,11 @@ func TestMacClientInterop(t *testing.T) {
 					if c, err := k.Open(f); err == nil {
 						frames <- c
 					}
+					if f.T == "dict" && f.F == "mac-b" {
+						if text, err := k.OpenDict(f); err == nil {
+							dicts <- text
+						}
+					}
 				}
 			}()
 		}
@@ -95,6 +102,18 @@ func TestMacClientInterop(t *testing.T) {
 			fr, _ := k.Seal(protocol.Clip{ID: "o1", From: "phone", TS: time.Now().UnixMilli() + 1000, Text: "来自另一台设备"})
 			b, _ := json.Marshal(fr)
 			other.Write(ctx, websocket.MessageText, b)
+			// C9: 另一台设备的词库快照：Mac 端要放进同步文件夹；Mac 端自己的快照要能被第三方解开
+			df, _ := k.SealDict("phone", []byte("wo men\t我们\tc=3\n"))
+			db, _ := json.Marshal(df)
+			other.Write(ctx, websocket.MessageText, db)
+			select {
+			case text := <-dicts:
+				if string(text) != "# Rime user dictionary\n#@/tick\t1\nni hao\t你好\tc=1\n" {
+					t.Fatalf("mac dict snapshot: %q", text)
+				}
+			case <-time.After(10 * time.Second):
+				t.Fatal("mac device sent no dict snapshot")
+			}
 		}
 	}
 	if err := peer.Wait(); err != nil {
@@ -111,7 +130,7 @@ func TestMacCleansLegacyCopies(t *testing.T) {
 	os.WriteFile(main, b, 0o644)
 	bin := filepath.Join(dir, "t")
 	build := exec.Command("swiftc", "-O", "-o", bin, filepath.Join(root, "macos/Sources/Rime.swift"),
-		filepath.Join(root, "macos/Sources/Sync.swift"), main)
+		filepath.Join(root, "macos/Sources/Sync.swift"), filepath.Join(root, "macos/Sources/DictSync.swift"), main)
 	build.Stderr = os.Stderr
 	if err := build.Run(); err != nil {
 		t.Fatal(err)

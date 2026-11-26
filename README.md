@@ -4,7 +4,8 @@
 
 ## 特性
 
-- **雾凇拼音词库**：内置 [rime-ice](https://github.com/iDvel/rime-ice) 词库与预编译数据，安装即用。
+- **白霜拼音词库**：内置 [rime-frost](https://github.com/gaboolic/rime-frost) 词库与预编译数据，安装即用。
+- **词库多端同步**：各设备打字学到的新词与词频，经你自己的服务器加密同步到同一同步组的其他设备（Linux 需在输入法菜单里手动点「同步用户资料」合并）。
 - **小鹤双拼 / 全拼随时切换**：同时支持界面点击与自定义快捷键（默认 `Ctrl + Shift + 1`），适合个人使用与共用电脑场景。
 - **跨设备加密剪贴板同步**：支持通过自建中转服务器跨网络同步最新一条文本（最大 1 MB），端到端 AES-256-GCM 加密，中转服务器仅见密文；手机端可在候选栏直接点选粘贴，各端均兼容常规粘贴。
 - **在线检查更新**：客户端支持检测 GitHub Releases 新版本并一键更新。
@@ -45,21 +46,30 @@
 
 - 服务会以 systemd（`yiqi-relay.service`）运行，并仅监听 `127.0.0.1:<端口>`。
 - 使用 Nginx、Caddy 或 Cloudflare Tunnel 等将你的 HTTPS 域名反向代理至该端口（需支持 WebSocket 转发）。
-- 首次部署完成时，脚本会自动输出一个 **10 分钟内有效的一次性注册临时密码**。如果已过期，可在服务器上重新生成：
+- 首次部署完成时，脚本会自动输出一个 **10 分钟内有效的一次性注册临时密码**。如果已过期，或想再建一个新的同步组，可在服务器上重新生成（`--name` 只用于你在服务器上辨认这个组）：
 
 ```bash
-/usr/local/bin/yiqi-relay code --data /var/lib/yiqi-relay
+/usr/local/bin/yiqi-relay code --data /var/lib/yiqi-relay --name 家人
 ```
+
+一台服务器可以有多个互相隔离的同步组，用 `yiqi-relay list --data /var/lib/yiqi-relay` 查看。
 
 #### 第二步：设备配对
 
 1. **第一台设备**：打开一炁设置 → 剪贴板同步，填入你的服务器地址（如 `https://clip.example.com`）和上一步生成的临时密码，完成同步组创建。
 2. **后续设备**：在已配对设备的设置中点击「添加设备」获取邀请码，在新设备上输入同样的服务器地址与邀请码即可加入。
-3. **重置同步组**：若所有已配对设备都已丢失，可在服务器上运行以下命令清空同步组后再重新注册：
+3. **删除同步组**：若某组的设备都已丢失，可在服务器上按组名或编号删除它（其他组不受影响），再用 `code` 重新注册：
 
 ```bash
-/usr/local/bin/yiqi-relay reset --data /var/lib/yiqi-relay
+/usr/local/bin/yiqi-relay reset --data /var/lib/yiqi-relay 家人
 ```
+
+#### 多个同步组与词库同步
+
+- **多个同步组**：一台服务器可同时服务多个互相隔离的同步组（例如自己和家人各一组），各组的剪贴板和词库互不可见。在服务器上用 `yiqi-relay code --name 组名` 建组、`list` 查看、`reset <组名或编号>` 删除某一组。
+- **词库同步**：同一同步组内，各设备打字学到的新词与词频会加密同步并合并（全拼与小鹤双拼共用一份词库）。连上服务器后几秒内同步一次，之后每 30 分钟一次，收到其他设备的新词也会触发；离线的设备上线后自动补上。合并借用 Rime 自带的「同步用户资料」，服务器只保存密文。
+- **平台差异**：Linux（Fcitx5 / IBus）只负责收发词库快照，需在输入法菜单里点「同步用户资料」才会合并到本机；iOS 端的词库同步尚未在真机验证。
+- **旧版升级**：从雾凇词库升级到白霜后，旧的学习记录不会带过去，需要重新积累。
 
 ### 4. 在线更新
 
@@ -73,7 +83,7 @@
 
 ```text
 .
-├── rime/               # 雾凇拼音补丁（qi_patch.yaml）与双拼/全拼切换脚本（lua/qi_switch.lua）
+├── rime/               # 白霜拼音补丁（qi_patch.yaml）与双拼/全拼切换脚本（lua/qi_switch.lua）
 ├── scripts/            # 词库拉取打包脚本（rime_data.sh）与发布脚本（release.sh）
 ├── sync/               # Go 模块：加密协议（protocol）、中转服务（relay、cmd/yiqi-relay）、客户端核心（client）
 ├── server/             # 中转服务一键部署脚本（deploy.sh）与 systemd 配置
@@ -89,7 +99,7 @@
 
 ### 核心实现概览
 
-- **输入法内核与方案切换**：`scripts/rime_data.sh` 拉取固定版本的 `rime-ice`，并将 `rime/qi_patch.yaml` 与 `rime/lua/qi_switch.lua` 注入词库。各端界面与快捷键通过用户数据目录下的 `qi_schema.txt`（当前方案）和 `qi_hotkey.txt`（自定义快捷键）保持一致。
+- **输入法内核与方案切换**：`scripts/rime_data.sh` 拉取固定版本的 `rime-frost`，并将 `rime/qi_patch.yaml` 与 `rime/lua/qi_switch.lua` 注入词库。各端界面与快捷键通过用户数据目录下的 `qi_schema.txt`（当前方案）和 `qi_hotkey.txt`（自定义快捷键）保持一致。
 - **剪贴板同步协议**：`sync/protocol` 使用 32 字节配对密钥分别派生加密密钥与认证令牌（HMAC-SHA256），正文采用 AES-256-GCM 加密，服务器仅保存认证摘要与密文帧。Windows / Linux 复用 `sync/client`，macOS / Android / iOS 实现了同一套协议。
 - **Android 定制方式**：`android/build.sh` 每次都会拉取固定 tag 的 Trime 源码并执行 `android/patch.py` 与 `android/overlay/` 覆盖。**请不要直接修改 `build/android/trime/` 下的临时文件**，所有持久化改动都应写入 `android/patch.py`、`android/theme/` 或 `android/overlay/`。
 

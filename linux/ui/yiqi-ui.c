@@ -200,7 +200,7 @@ static void refresh_ui(void) {
     gtk_widget_set_visible(w_im_hint, g_state.framework[0] == '\0');
 
     g_suppress_scheme = TRUE;
-    gboolean is_qp = strcmp(g_state.scheme, "rime_ice") == 0;
+    gboolean is_qp = strcmp(g_state.scheme, "rime_frost") == 0;
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(w_btn_flypy), !is_qp);
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(w_btn_quanpin), is_qp);
     g_suppress_scheme = FALSE;
@@ -430,8 +430,8 @@ static void build_window(void) {
     gtk_toggle_button_set_mode(GTK_TOGGLE_BUTTON(w_btn_flypy), FALSE);
     w_btn_quanpin = gtk_radio_button_new_with_label_from_widget(GTK_RADIO_BUTTON(w_btn_flypy), "全拼");
     gtk_toggle_button_set_mode(GTK_TOGGLE_BUTTON(w_btn_quanpin), FALSE);
-    g_signal_connect(w_btn_flypy, "toggled", G_CALLBACK(on_scheme_toggled), "double_pinyin_flypy");
-    g_signal_connect(w_btn_quanpin, "toggled", G_CALLBACK(on_scheme_toggled), "rime_ice");
+    g_signal_connect(w_btn_flypy, "toggled", G_CALLBACK(on_scheme_toggled), "rime_frost_double_pinyin_flypy");
+    g_signal_connect(w_btn_quanpin, "toggled", G_CALLBACK(on_scheme_toggled), "rime_frost");
     gtk_box_pack_start(GTK_BOX(sr), w_btn_flypy, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(sr), w_btn_quanpin, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(sb), sr, FALSE, FALSE, 0);
@@ -651,7 +651,7 @@ static void menu_method_call(GDBusConnection *c, const char *s, const char *p, c
         g_variant_builder_add(&children, "v", menu_item(3, "检查更新…", FALSE));
         g_variant_builder_add(&children, "v", menu_item(4, "", TRUE));
         char sl[256];
-        const char *next = strcmp(g_state.scheme, "rime_ice") == 0 ? "小鹤双拼" : "全拼";
+        const char *next = strcmp(g_state.scheme, "rime_frost") == 0 ? "小鹤双拼" : "全拼";
         snprintf(sl, sizeof(sl), "切换至%s（%s）", next, g_state.hotkey_label[0] ? g_state.hotkey_label : "Ctrl + Shift + 1");
         g_variant_builder_add(&children, "v", menu_item(5, sl, FALSE));
         g_variant_builder_add(&children, "v", menu_item(6, "", TRUE));

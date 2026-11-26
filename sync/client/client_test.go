@@ -97,7 +97,7 @@ func TestSyncerEndToEnd(t *testing.T) {
 	srv := httptest.NewServer(srvImpl.Handler())
 	defer srv.Close()
 
-	setupCode, err := relay.NewSetupCode(dir, time.Minute)
+	setupCode, err := relay.NewSetupCode(dir, time.Minute, "g1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -181,7 +181,7 @@ func TestSyncerEndToEnd(t *testing.T) {
 	}
 
 	// C5: 服务器重置同步组后旧设备不再被认可。
-	if err := relay.Reset(dir); err != nil {
+	if err := relay.Reset(dir, "g1"); err != nil {
 		t.Fatal(err)
 	}
 	deadline := time.Now().Add(5 * time.Second)
@@ -195,4 +195,76 @@ func TestSyncerEndToEnd(t *testing.T) {
 		t.Fatalf("expected StatusInvalid after reset, got %s", a.Status())
 	}
 	_ = protocol.MaxText
+}
+
+// C9: 两台设备各自学到的词，经服务器加密中转后合并到对方的词库（这里用文件模拟 Rime 的导出与合并）。
+func TestDictSyncBetweenDevices(t *testing.T) {
+	dictFirst, dictDebounce = 50*time.Millisecond, 50*time.Millisecond
+	dir := t.TempDir()
+	srvImpl, _ := relay.New(dir)
+	srv := httptest.NewServer(srvImpl.Handler())
+	defer srv.Close()
+	code, _ := relay.NewSetupCode(dir, time.Minute, "")
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	pair, err := Register(ctx, srv.Client(), srv.URL, code)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// 模拟 Rime：本机词条在 own 文件里，同步时写出快照，并把其他设备快照里的词条并入本机。
+	type fake struct {
+		dir, id string
+		words   map[string]bool
+	}
+	newFake := func(id string) *fake {
+		f := &fake{dir: t.TempDir(), id: id, words: map[string]bool{}}
+		os.WriteFile(filepath.Join(f.dir, "installation.yaml"), []byte("installation_id: \""+id+"\"\n"), 0o644)
+		return f
+	}
+	run := func(f *fake) error {
+		others, _ := filepath.Glob(filepath.Join(f.dir, "sync", "*", DictFile))
+		for _, p := range others {
+			if strings.Contains(p, f.id) {
+				continue
+			}
+			b, _ := os.ReadFile(p)
+			for _, l := range strings.Split(string(b), "\n") {
+				if l != "" && !strings.HasPrefix(l, "#") {
+					f.words[l] = true
+				}
+			}
+		}
+		var sb strings.Builder
+		sb.WriteString("# Rime user dictionary\n#@/tick\t1\n")
+		for w := range f.words {
+			sb.WriteString(w + "\n")
+		}
+		return writeAtomic(filepath.Join(f.dir, "sync", f.id, DictFile), []byte(sb.String()))
+	}
+	start := func(devID string, f *fake) *Syncer {
+		s := NewSyncer(devID, newMemClip())
+		s.HTTPClient = srv.Client()
+		s.Dict = &DictSync{Dirs: []string{f.dir}, Trigger: func() error { return run(f) }}
+		go s.Start(ctx)
+		s.Configure(pair)
+		return s
+	}
+	a, b := newFake("install-a"), newFake("install-b")
+	a.words["wo men\t我们\tc=3"] = true
+	b.words["ni hao\t你好\tc=2"] = true
+	start("dev-a", a)
+	start("dev-b", b)
+	has := func(f *fake, w string) bool {
+		run(f)
+		return f.words[w]
+	}
+	deadline := time.Now().Add(15 * time.Second)
+	for time.Now().Before(deadline) {
+		if has(a, "ni hao\t你好\tc=2") && has(b, "wo men\t我们\tc=3") {
+			return
+		}
+		time.Sleep(200 * time.Millisecond)
+	}
+	t.Fatalf("words not merged: a=%v b=%v", a.words, b.words)
 }

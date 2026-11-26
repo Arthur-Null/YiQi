@@ -209,6 +209,8 @@ type Syncer struct {
 	HTTPClient *http.Client
 	OnStatus   func(Status)
 	OnClip     func(protocol.Clip)
+	// Dict C9: 用户词库同步；为空表示这台设备不同步词库。
+	Dict *DictSync
 
 	mu            sync.Mutex
 	server        string
@@ -223,6 +225,7 @@ type Syncer struct {
 	lastTS        int64
 	pending       *protocol.Clip
 	reconf        chan struct{}
+	dictKick      chan struct{}
 }
 
 func NewSyncer(deviceID string, cb Clipboard) *Syncer {
@@ -231,6 +234,7 @@ func NewSyncer(deviceID string, cb Clipboard) *Syncer {
 		Clipboard: cb,
 		status:    StatusUnpaired,
 		reconf:    make(chan struct{}, 1),
+		dictKick:  make(chan struct{}, 1),
 	}
 }
 
@@ -376,6 +380,8 @@ func (s *Syncer) Start(ctx context.Context) {
 			s.sendClip(runCtx, conn, k, *pend)
 		}
 
+		go s.dictLoop(runCtx, conn, k)
+
 		pingDone := make(chan struct{})
 		go func() {
 			defer close(pingDone)
@@ -412,6 +418,8 @@ func (s *Syncer) Start(ctx context.Context) {
 				if oerr == nil {
 					s.apply(clip)
 				}
+			case "dict":
+				s.applyDict(k, f)
 			case "join":
 				s.answerJoin(runCtx, conn, k, f.D, f.J)
 			}

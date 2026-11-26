@@ -6,6 +6,7 @@ final class KeyboardViewController: UIInputViewController {
     private let keyboardView = KeyboardView()
     private let engine = QiRimeEngine.shared
     private let sync = QiClipboardSync()
+    private lazy var dictSync = QiDictSync { [weak self] in self?.engine.syncUserData() ?? false }
 
     private var currentSnapshot = QiRimeSnapshot(
         committed: "", preedit: "", candidates: [], highlightedIndex: 0,
@@ -48,6 +49,7 @@ final class KeyboardViewController: UIInputViewController {
                 self?.clipSuggestion = clip.text
                 self?.refreshUI()
             }
+            sync.dict = dictSync
             sync.configure(QiStore.pairCode.flatMap(QiKey.init(pairCode:)))
             sync.syncLocalPasteboardIfNeeded()
         }

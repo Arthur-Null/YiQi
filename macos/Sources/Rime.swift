@@ -4,8 +4,8 @@ import CryptoKit
 import Foundation
 
 enum Scheme: String, CaseIterable {
-    case flypy = "double_pinyin_flypy"
-    case quanpin = "rime_ice"
+    case flypy = "rime_frost_double_pinyin_flypy"
+    case quanpin = "rime_frost"
 
     var title: String { self == .flypy ? "小鹤双拼" : "全拼" }
     var short: String { self == .flypy ? "鹤" : "全" }
@@ -65,7 +65,7 @@ enum Rime {
         let manifestFile = userDir.appendingPathComponent("qi_installed.json")
         let manifest = (try? Data(contentsOf: manifestFile)).flatMap { try? JSONDecoder().decode([String: String].self, from: $0) }
         var removed = false
-        for name in ["default.custom.yaml", "double_pinyin_flypy.custom.yaml", "rime_ice.custom.yaml"] {
+        for name in ["default.custom.yaml", "rime_frost_double_pinyin_flypy.custom.yaml", "rime_frost.custom.yaml"] {
             let u = userDir.appendingPathComponent(name)
             if let t = try? String(contentsOf: u, encoding: .utf8), t.hasPrefix("# C2:") { try? fm.removeItem(at: u); removed = true }
         }

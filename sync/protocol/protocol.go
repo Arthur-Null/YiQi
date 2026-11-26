@@ -2,6 +2,8 @@
 package protocol
 
 import (
+	"bytes"
+	"compress/gzip"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/hmac"
@@ -11,6 +13,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/url"
 	"strings"
 )
@@ -63,6 +66,48 @@ type Frame struct {
 	T string `json:"t"`
 	D string `json:"d,omitempty"`
 	J string `json:"j,omitempty"`
+	F string `json:"f,omitempty"`
+}
+
+// MaxDict C9: 单台设备的词库快照压缩后的上限（含加密与编码开销，须小于 MaxFrame）。
+const MaxDict = 3 << 20
+
+// SealDict C9: 词库快照（Rime 导出的 *.userdb.txt）压缩后加密；F 为发出快照的设备，服务器按它保存每台设备最新一份。
+func (k Key) SealDict(from string, text []byte) (Frame, error) {
+	var zb bytes.Buffer
+	zw := gzip.NewWriter(&zb)
+	zw.Write(text)
+	zw.Close()
+	a := k.aead()
+	nonce := make([]byte, a.NonceSize())
+	if _, err := rand.Read(nonce); err != nil {
+		return Frame{}, err
+	}
+	sealed := a.Seal(nonce, nonce, zb.Bytes(), []byte("dict"))
+	if len(sealed) > MaxDict {
+		return Frame{}, fmt.Errorf("dict too large: %d", len(sealed))
+	}
+	return Frame{T: "dict", F: from, D: base64.StdEncoding.EncodeToString(sealed)}, nil
+}
+
+func (k Key) OpenDict(f Frame) ([]byte, error) {
+	raw, err := base64.StdEncoding.DecodeString(f.D)
+	if err != nil {
+		return nil, err
+	}
+	a := k.aead()
+	if len(raw) < a.NonceSize() {
+		return nil, errors.New("short frame")
+	}
+	zipped, err := a.Open(nil, raw[:a.NonceSize()], raw[a.NonceSize():], []byte("dict"))
+	if err != nil {
+		return nil, err
+	}
+	zr, err := gzip.NewReader(bytes.NewReader(zipped))
+	if err != nil {
+		return nil, err
+	}
+	return io.ReadAll(io.LimitReader(zr, 64<<20))
 }
 
 func (k Key) Seal(c Clip) (Frame, error) {

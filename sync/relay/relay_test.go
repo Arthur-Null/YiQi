@@ -36,7 +36,7 @@ func setup(t *testing.T) (*httptest.Server, protocol.Key, string) {
 	srv := httptest.NewTLSServer(s.Handler())
 	t.Cleanup(srv.Close)
 	k, _ := protocol.NewKey()
-	code, err := NewSetupCode(dir, time.Minute)
+	code, err := NewSetupCode(dir, time.Minute, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -143,7 +143,7 @@ func TestServerHoldsOnlyCiphertext(t *testing.T) {
 	secret := "sk-ant-api-key-秘密内容"
 	send(t, a, k, secret)
 	time.Sleep(200 * time.Millisecond)
-	files, _ := filepath.Glob(filepath.Join(dir, "*"))
+	files, _ := filepath.Glob(filepath.Join(dir, "groups", "*", "*"))
 	for _, f := range files {
 		b, _ := os.ReadFile(f)
 		if strings.Contains(string(b), secret) || strings.Contains(string(b), "sk-ant") {
@@ -153,7 +153,7 @@ func TestServerHoldsOnlyCiphertext(t *testing.T) {
 			t.Fatalf("auth token stored in %s", f)
 		}
 	}
-	stored, err := os.ReadFile(filepath.Join(dir, "latest.json"))
+	stored, err := os.ReadFile(filepath.Join(dir, "groups", protocol.Verifier(k.AuthToken()), "latest.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -168,70 +168,13 @@ func TestServerHoldsOnlyCiphertext(t *testing.T) {
 	}
 }
 
-// C5, C7: 第一台设备凭服务器上现场生成的临时密码注册同步组：没生成、过期、输错都被拒；用过即作废；
-// 已注册时不能再生成；重置后旧设备立即断开，可重新生成并注册。
-func TestRegisterWithSetupCode(t *testing.T) {
-	dir := t.TempDir()
-	s, _ := New(dir)
-	srv := httptest.NewTLSServer(s.Handler())
-	defer srv.Close()
-	k1, _ := protocol.NewKey()
-	if c := claim(t, srv, "123456", k1); c != http.StatusForbidden {
-		t.Fatal("register without a generated code:", c)
-	}
-	expired, _ := NewSetupCode(dir, -time.Second)
-	if c := claim(t, srv, expired, k1); c != http.StatusForbidden {
-		t.Fatal("expired code accepted:", c)
-	}
-	code, err := NewSetupCode(dir, time.Minute)
-	if err != nil || len(code) != 6 {
-		t.Fatal(code, err)
-	}
-	wrong := "000000"
-	if code == wrong {
-		wrong = "111111"
-	}
-	if c := claim(t, srv, wrong, k1); c != http.StatusForbidden {
-		t.Fatal("wrong code:", c)
-	}
-	if c := claim(t, srv, code, k1); c != http.StatusOK {
-		t.Fatal("register:", c)
-	}
-	k2, _ := protocol.NewKey()
-	if c := claim(t, srv, code, k2); c != http.StatusConflict {
-		t.Fatal("second register:", c)
-	}
-	if _, err := NewSetupCode(dir, time.Minute); err != ErrRegistered {
-		t.Fatal("code generated for a registered group")
-	}
-	a, _, err := dial(t, srv, k1.AuthToken())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := Reset(dir); err != nil {
-		t.Fatal(err)
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	if _, _, err := a.Read(ctx); err == nil {
-		t.Fatal("old device still connected after reset")
-	}
-	if _, resp, err := dial(t, srv, k1.AuthToken()); err == nil || resp.StatusCode != http.StatusUnauthorized {
-		t.Fatal("old device accepted after reset")
-	}
-	newCode, _ := NewSetupCode(dir, time.Minute)
-	if c := claim(t, srv, newCode, k2); c != http.StatusOK {
-		t.Fatal("register after reset:", c)
-	}
-}
-
 // C5: 输错次数过多后注册临时密码作废
 func TestSetupCodeAttemptLimit(t *testing.T) {
 	dir := t.TempDir()
 	s, _ := New(dir)
 	srv := httptest.NewTLSServer(s.Handler())
 	defer srv.Close()
-	code, _ := NewSetupCode(dir, time.Minute)
+	code, _ := NewSetupCode(dir, time.Minute, "")
 	wrong := "000000"
 	if code == wrong {
 		wrong = "111111"

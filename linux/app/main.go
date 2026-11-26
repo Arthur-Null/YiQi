@@ -84,6 +84,8 @@ func newDaemon() *Daemon {
 	rime.EnsureUserCopies(filepath.Join(dataDir(), "rime-data"))
 	clip := LinuxClipboard{}
 	syncer := client.NewSyncer(store.DeviceID(), clip)
+	// T2: Fcitx5 / IBus 没有从外部触发「同步用户资料」的入口，这里只收发快照，合并要用户在输入法菜单里点「同步」。
+	syncer.Dict = &client.DictSync{Dirs: dirs}
 	ctx, cancel := context.WithCancel(context.Background())
 
 	d := &Daemon{

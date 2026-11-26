@@ -72,7 +72,7 @@ s = s[:a] + '''  override func menu() -> NSMenu! {
     check.target = self
     menu.addItem(check)
     menu.addItem(.separator())
-    let flypy = qiCurrentScheme() == "double_pinyin_flypy"
+    let flypy = qiCurrentScheme() == "rime_frost_double_pinyin_flypy"
     let scheme = NSMenuItem(title: "切换至\\(flypy ? "全拼" : "小鹤双拼")（\\(qiHotkeyLabel())）",
                             action: #selector(qiSwitchScheme), keyEquivalent: "")
     scheme.target = self
@@ -104,7 +104,7 @@ s = s[:a] + '''  override func menu() -> NSMenu! {
   }
 
   @objc func qiSwitchScheme() {
-    let target = qiCurrentScheme() == "double_pinyin_flypy" ? "rime_ice" : "double_pinyin_flypy"
+    let target = qiCurrentScheme() == "rime_frost_double_pinyin_flypy" ? "rime_frost" : "rime_frost_double_pinyin_flypy"
     let f = SquirrelApp.userDir.appending(component: "qi_schema.txt")
     try? "\\(target) menu-\\(Int(Date().timeIntervalSince1970 * 1000))\\n".write(to: f, atomically: true, encoding: .utf8)
     if session != 0 {
@@ -176,7 +176,7 @@ patch(p, '''    // text done!
     view.textView.textContentStorage?.attributedString = text''', '''    view.qiButtonRange = nil
     if linear && !vertical && !candidates.isEmpty {
       let style = text.attribute(.paragraphStyle, at: text.length - 1, effectiveRange: nil)
-      let flypy = inputController?.qiCurrentScheme() == "double_pinyin_flypy"
+      let flypy = inputController?.qiCurrentScheme() == "rime_frost_double_pinyin_flypy"
       let gap = NSMutableAttributedString(string: "    ", attributes: theme.attrs)
       let button = NSMutableAttributedString(string: "\\u{2006}\\(flypy ? "双拼" : "全拼")\\u{2006}", attributes: theme.labelAttrs)
       if let style {

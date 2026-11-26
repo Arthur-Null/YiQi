@@ -74,8 +74,8 @@ final class QiRimeEngine {
 
         api.pointee.setup(&traits)
         api.pointee.initialize(&traits)
-        let prebuiltSchema = prebuiltURL.appendingPathComponent("double_pinyin_flypy.schema.yaml")
-        let stagedSchema = stagingURL.appendingPathComponent("double_pinyin_flypy.schema.yaml")
+        let prebuiltSchema = prebuiltURL.appendingPathComponent("rime_frost_double_pinyin_flypy.schema.yaml")
+        let stagedSchema = stagingURL.appendingPathComponent("rime_frost_double_pinyin_flypy.schema.yaml")
         if !FileManager.default.fileExists(atPath: prebuiltSchema.path) &&
             !FileManager.default.fileExists(atPath: stagedSchema.path) {
             _ = api.pointee.start_maintenance(0)
@@ -84,6 +84,22 @@ final class QiRimeEngine {
         started = true
         ensureSession()
         syncSchemaFromStore()
+    }
+
+    // C9: 请 Rime 做一次「同步用户资料」：导出本机词库快照，并合并 sync/ 下其他设备的快照。
+    // 正在输入时不做（会重启引擎）；返回 false 表示稍后再试。
+    func syncUserData() -> Bool {
+        guard started, !snapshot().isComposing else { return false }
+        api.pointee.destroy_session(session)
+        api.pointee.finalize()
+        started = false
+        session = 0
+        api.pointee.deployer_initialize(nil)
+        let ok = api.pointee.sync_user_data() != 0
+        api.pointee.join_maintenance_thread()
+        api.pointee.finalize()
+        startIfNeeded()
+        return ok
     }
 
     private func ensureSession() {

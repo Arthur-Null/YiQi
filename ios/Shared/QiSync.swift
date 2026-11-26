@@ -58,6 +58,18 @@ struct QiKey {
         return try AES.GCM.seal(plain, using: encKey).combined!.base64EncodedString()
     }
 
+    // C9: 词库快照：压缩后加密，附加认证数据 "dict" 与剪贴板内容区分
+    func sealDict(_ text: Data) throws -> String {
+        let box = try AES.GCM.seal(try QiGzip.compress(text), using: encKey, authenticating: Data("dict".utf8))
+        return box.combined!.base64EncodedString()
+    }
+
+    func openDict(_ d: String) throws -> Data {
+        guard let raw = Data(base64Encoded: d) else { throw CocoaError(.coderReadCorrupt) }
+        let zipped = try AES.GCM.open(AES.GCM.SealedBox(combined: raw), using: encKey, authenticating: Data("dict".utf8))
+        return try QiGzip.decompress(zipped)
+    }
+
     func open(_ d: String) throws -> QiClip {
         guard let raw = Data(base64Encoded: d) else { throw CocoaError(.coderReadCorrupt) }
         let plain = try AES.GCM.open(AES.GCM.SealedBox(combined: raw), using: encKey)
@@ -76,6 +88,7 @@ private struct QiFrame: Codable {
     var t: String
     var d: String?
     var j: String?
+    var f: String?
 }
 
 extension Data {
@@ -127,6 +140,8 @@ final class QiClipboardSync: NSObject, URLSessionWebSocketDelegate {
     private var pending: QiClip?
     private var pingTimer: Timer?
     private(set) var inviteCode: String?
+    // C9: 用户词库同步；为空表示不同步词库
+    var dict: QiDictSync?
 
     init(deviceID: String = QiStore.deviceID) {
         self.deviceID = deviceID
@@ -159,6 +174,7 @@ final class QiClipboardSync: NSObject, URLSessionWebSocketDelegate {
     }
 
     func disconnect() {
+        dict?.disconnected()
         generation += 1
         task?.cancel(with: .goingAway, reason: nil)
         task = nil
@@ -180,6 +196,7 @@ final class QiClipboardSync: NSObject, URLSessionWebSocketDelegate {
     }
 
     private func drop() {
+        dict?.disconnected()
         guard key != nil else { return }
         if (task?.response as? HTTPURLResponse)?.statusCode == 401 {
             status = .invalid
@@ -204,6 +221,7 @@ final class QiClipboardSync: NSObject, URLSessionWebSocketDelegate {
         status = .connected
         retry = 1
         if let p = pending { pending = nil; send(p) }
+        dict?.connected { [weak self] text in self?.sendDict(text) }
     }
 
     func urlSession(_ session: URLSession, task t: URLSessionTask, didCompleteWithError error: Error?) {
@@ -227,6 +245,9 @@ final class QiClipboardSync: NSObject, URLSessionWebSocketDelegate {
                     if let data, let f = try? JSONDecoder().decode(QiFrame.self, from: data) {
                         if f.t == "clip", let d = f.d, let clip = try? self.key?.open(d) {
                             self.apply(clip)
+                        } else if f.t == "dict", let d = f.d, let from = f.f, from != self.deviceID,
+                                  let text = try? self.key?.openDict(d) {
+                            self.dict?.receive(from: from, text: text)
                         } else if f.t == "join", let d = f.d, let j = f.j {
                             self.answerJoin(d, j)
                         }
@@ -287,6 +308,14 @@ final class QiClipboardSync: NSObject, URLSessionWebSocketDelegate {
         guard let key, let code = inviteCode,
               let reply = try? QiPairing.sealGroupKey(peer: peer, code: code, key: key) else { return }
         sendFrame(QiFrame(t: "join-ok", d: reply, j: id))
+    }
+
+    private func sendDict(_ text: Data) {
+        guard let key, let t = task, status == .connected, let d = try? key.sealDict(text),
+              let body = try? JSONEncoder().encode(QiFrame(t: "dict", d: d, f: deviceID)),
+              let s = String(data: body, encoding: .utf8)
+        else { return }
+        t.send(.string(s)) { _ in }
     }
 
     private func sendFrame(_ f: QiFrame) {
