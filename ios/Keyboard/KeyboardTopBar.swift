@@ -88,16 +88,22 @@ final class KeyboardTopBar: UIView {
 
         // C3: 候选栏剪贴板提示圆角气泡（点一下直接输入全文）
         clipPill.isHidden = true
-        clipPill.titleLabel?.font = .systemFont(ofSize: 13)
-        clipPill.titleLabel?.lineBreakMode = .byTruncatingTail
-        clipPill.setTitleColor(KeyboardTheme.text, for: .normal)
+        var pillConfig = UIButton.Configuration.plain()
+        pillConfig.contentInsets = NSDirectionalEdgeInsets(top: 5, leading: 10, bottom: 5, trailing: 10)
+        pillConfig.image = UIImage(systemName: "doc.on.clipboard")?.withConfiguration(
+            UIImage.SymbolConfiguration(pointSize: 12, weight: .medium))
+        pillConfig.imagePadding = 4
+        pillConfig.baseForegroundColor = KeyboardTheme.text
+        pillConfig.titleLineBreakMode = .byTruncatingTail
+        pillConfig.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { attrs in
+            var a = attrs
+            a.font = .systemFont(ofSize: 13)
+            return a
+        }
+        clipPill.configuration = pillConfig
         clipPill.tintColor = KeyboardTheme.candidateHighlight
         clipPill.backgroundColor = KeyboardTheme.pillBack
         clipPill.layer.cornerRadius = 15
-        clipPill.contentEdgeInsets = UIEdgeInsets(top: 5, left: 10, bottom: 5, right: 10)
-        clipPill.setImage(UIImage(systemName: "doc.on.clipboard")?.withConfiguration(
-            UIImage.SymbolConfiguration(pointSize: 12, weight: .medium)), for: .normal)
-        clipPill.imageEdgeInsets = UIEdgeInsets(top: 0, left: -4, bottom: 0, right: 4)
         clipPill.addTarget(self, action: #selector(tapClipPill), for: .touchUpInside)
 
         let spacer = UIView()
@@ -128,6 +134,7 @@ final class KeyboardTopBar: UIView {
         ])
 
         candScroll.showsHorizontalScrollIndicator = false
+        candScroll.disableEdgeEffects()
         candScroll.translatesAutoresizingMaskIntoConstraints = false
         candStack.axis = .horizontal
         candStack.alignment = .center
@@ -211,10 +218,17 @@ final class KeyboardTopBar: UIView {
         for (idx, cand) in snapshot.candidates.enumerated() {
             let b = UIButton(type: .system)
             let title = cand.comment.isEmpty ? cand.text : "\(cand.text) \(cand.comment)"
-            b.setTitle(title, for: .normal)
-            b.titleLabel?.font = .systemFont(ofSize: 19, weight: idx == snapshot.highlightedIndex ? .medium : .regular)
-            b.setTitleColor(idx == snapshot.highlightedIndex ? KeyboardTheme.candidateHighlight : KeyboardTheme.text, for: .normal)
-            b.contentEdgeInsets = UIEdgeInsets(top: 6, left: 12, bottom: 6, right: 12)
+            let highlighted = idx == snapshot.highlightedIndex
+            var config = UIButton.Configuration.plain()
+            config.title = title
+            config.contentInsets = NSDirectionalEdgeInsets(top: 6, leading: 12, bottom: 6, trailing: 12)
+            config.baseForegroundColor = highlighted ? KeyboardTheme.candidateHighlight : KeyboardTheme.text
+            config.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { attrs in
+                var a = attrs
+                a.font = .systemFont(ofSize: 19, weight: highlighted ? .medium : .regular)
+                return a
+            }
+            b.configuration = config
             b.tag = idx
             b.addTarget(self, action: #selector(tapCand(_:)), for: .touchUpInside)
             candStack.addArrangedSubview(b)

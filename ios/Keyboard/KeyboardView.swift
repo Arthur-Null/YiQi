@@ -231,8 +231,7 @@ final class KeyboardView: UIView {
     }
 
     private func refreshShiftUI() {
-        shiftButton?.setImage(UIImage(systemName: shiftIconName)?.withConfiguration(
-            UIImage.SymbolConfiguration(pointSize: 17, weight: .medium)), for: .normal)
+        shiftButton?.setIcon(shiftIconName)
         updateLetterLabels()
     }
 
@@ -315,6 +314,7 @@ final class KeyboardView: UIView {
         root.translatesAutoresizingMaskIntoConstraints = false
 
         let scroll = UIScrollView()
+        scroll.disableEdgeEffects()
         let grid = UIStackView()
         grid.axis = .vertical
         grid.spacing = 4
@@ -432,6 +432,7 @@ final class KeyboardView: UIView {
         root.translatesAutoresizingMaskIntoConstraints = false
 
         let scroll = UIScrollView()
+        scroll.disableEdgeEffects()
         let grid = UIStackView()
         grid.axis = .vertical
         grid.spacing = 6
@@ -585,9 +586,7 @@ final class KeyboardView: UIView {
 
     private func iconFnKey(_ sfName: String, action: @escaping () -> Void) -> KeyButton {
         let b = KeyButton(normal: KeyboardTheme.fnBack, pressed: KeyboardTheme.fnHighlight)
-        b.setImage(UIImage(systemName: sfName)?.withConfiguration(
-            UIImage.SymbolConfiguration(pointSize: 17, weight: .medium)), for: .normal)
-        b.tintColor = KeyboardTheme.text
+        b.setIcon(sfName)
         b.addAction(UIAction { [weak self] _ in self?.tick(); action() }, for: .touchUpInside)
         return b
     }
@@ -605,9 +604,7 @@ final class KeyboardView: UIView {
     // 退格：按下立即删除一次，按住 0.4 秒后连续删除。
     private func backspaceKey() -> KeyButton {
         let b = KeyButton(normal: KeyboardTheme.fnBack, pressed: KeyboardTheme.fnHighlight)
-        b.setImage(UIImage(systemName: "delete.left")?.withConfiguration(
-            UIImage.SymbolConfiguration(pointSize: 17, weight: .medium)), for: .normal)
-        b.tintColor = KeyboardTheme.text
+        b.setIcon("delete.left")
         b.addAction(UIAction { [weak self] _ in
             guard let self else { return }
             self.tick()
@@ -691,6 +688,27 @@ final class KeyButton: UIButton {
     }
 
     required init?(coder: NSCoder) { fatalError() }
+
+    // 图标由键自己的 UIImageView 绘制，不依赖 UIButton 自带的 imageView
+    //（后者在盖了一层 face 之后图标会消失）。
+    private lazy var iconView: UIImageView = {
+        let v = UIImageView()
+        v.contentMode = .center
+        v.tintColor = KeyboardTheme.text
+        v.isUserInteractionEnabled = false
+        v.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(v)
+        NSLayoutConstraint.activate([
+            v.centerXAnchor.constraint(equalTo: centerXAnchor),
+            v.centerYAnchor.constraint(equalTo: centerYAnchor),
+        ])
+        return v
+    }()
+
+    func setIcon(_ sfName: String) {
+        iconView.image = UIImage(systemName: sfName, withConfiguration:
+            UIImage.SymbolConfiguration(pointSize: 18, weight: .medium))
+    }
 
     override var isHighlighted: Bool {
         didSet { face.backgroundColor = isHighlighted ? pressedColor : normalColor }

@@ -90,7 +90,7 @@ final class QiRimeEngine {
     // 正在输入时不做（会重启引擎）；返回 false 表示稍后再试。
     func syncUserData() -> Bool {
         guard started, !snapshot().isComposing else { return false }
-        api.pointee.destroy_session(session)
+        _ = api.pointee.destroy_session(session)
         api.pointee.finalize()
         started = false
         session = 0

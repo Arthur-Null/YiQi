@@ -29,3 +29,15 @@ enum KeyboardTheme {
     static let candidateHighlight = dynamic(light: 0x2FB36D, dark: 0x3CC87D)
     static let pillBack = dynamic(light: 0xFFFFFF, dark: 0x2E2E30)
 }
+
+extension UIScrollView {
+    // iOS 26 起滚动视图边缘会自动叠一层玻璃模糊，会把候选词糊住；键盘里的滚动区域一律关掉。
+    func disableEdgeEffects() {
+        if #available(iOS 26.0, *) {
+            topEdgeEffect.isHidden = true
+            bottomEdgeEffect.isHidden = true
+            leftEdgeEffect.isHidden = true
+            rightEdgeEffect.isHidden = true
+        }
+    }
+}
