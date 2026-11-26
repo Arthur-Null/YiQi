@@ -30,8 +30,9 @@ For a technical requirement, ask why and record only the real need behind it. Fo
 - 一套覆盖日常五类设备（macOS、Windows、Linux、Android、iOS）的中文拼音输入法，词库与出词体验达到雾凇拼音级别的顺手程度。
 - 支持小鹤双拼与全拼，在家人共用电脑或借给他人打字时，能够通过界面或快捷键随时顺畅切换。
 - 提供类似微信输入法的多端文本剪贴板同步体验：在一台设备复制文本后，另一台打开了输入法的设备可直接粘贴使用，手机端还可在候选栏中直接看到并点选。
-- 应用能在线检查新版本并一键更新，不必每次手动下载安装包。
+- 应用能在线检查新版本并一键更新，不必每次手动下载安装包；可自行选择是否接受测试版更新，不开启时只收到正式版。
 - 开箱即用、对普通用户友好：不需要接触 Rime 的配置和概念；界面简洁好看，手机键盘外观与微信输入法的风格相近。
+- Windows 设置窗口采用现代简洁卡片风格，带连接状态彩色圆点与清晰留白层次，与 macOS 版观感看齐。
 
 ## Constraints
 
@@ -44,3 +45,5 @@ For a technical requirement, ask why and record only the real need behind it. Fo
 - **C7**：剪贴板同步使用的服务器地址必须可由用户自行配置。原因：用户后续可能开源，让别人使用他们自己的服务器。
 
 ## Temporary
+
+- **T1**：iOS 端安装包（`YiQi-iOS.ipa`）尚未在本机打包签名，因为当前这台 Mac 未安装 Xcode 也未提供 Apple 开发者签名凭据；需要用户在装有 Xcode 的 Mac 上运行 `ios/build.sh` 或推送代码由 GitHub Actions 自动生成 `.ipa` 并用自己的 Apple ID 签名安装到 iPhone。

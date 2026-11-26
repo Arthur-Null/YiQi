@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=一炁输入法
+Name[en]=YiQi Input
+Exec=yiqi --background
+Icon=yiqi
+Terminal=false
+X-GNOME-Autostart-enabled=true
+OnlyShowIn=GNOME;KDE;XFCE;LXQt;MATE;Cinnamon;Sway;Hyprland;

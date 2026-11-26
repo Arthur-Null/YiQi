@@ -7,31 +7,31 @@ style:
   candidate_padding: 10
   candidate_spacing: 0.0
   candidate_text_size: 20
-  candidate_view_height: 36
+  candidate_view_height: 42
   candidate_corner_radius: 6
   comment_height: 12
   comment_position: right
   comment_text_size: 12
-  horizontal_gap: 6
-  vertical_gap: 8
-  keyboard_padding: 4
-  keyboard_padding_bottom: 4
+  horizontal_gap: 5
+  vertical_gap: 9
+  keyboard_padding: 2
+  keyboard_padding_bottom: 3
   keyboard_padding_land: 60
-  key_height: 40
-  key_long_text_size: 16
-  key_text_size: 20
+  key_height: 44
+  key_long_text_size: 15
+  key_text_size: 21
   key_width: 10.0
-  label_text_size: 16
+  label_text_size: 15
   symbol_text_size: 9
   round_corner: 6
   shadow_radius: 0.0
   key_border: 0
-  key_text_offset_y: 3
-  key_symbol_offset_y: -1
+  key_text_offset_y: 2.5
+  key_symbol_offset_y: -0.5
   key_press_offset_x: 0
   key_press_offset_y: 0
-  keyboard_height: 206
-  keyboard_height_land: 190
+  keyboard_height: 216
+  keyboard_height_land: 192
   popup_text_size: 26
   reset_ascii_mode_on_focus_change: false
   enter_label_mode: 3
@@ -71,84 +71,84 @@ preset_color_schemes:
   default:
     name: 一炁浅色
     dark_scheme: dark
-    back_color: 0xEDEEF2
-    keyboard_back_color: 0xEDEEF2
-    root_background: 0xEDEEF2
-    candidate_background: 0xEDEEF2
-    border_color: 0xEDEEF2
-    candidate_separator_color: 0x00EDEEF2
+    back_color: 0xE4E6EB
+    keyboard_back_color: 0xE4E6EB
+    root_background: 0xE4E6EB
+    candidate_background: 0xE4E6EB
+    border_color: 0xE4E6EB
+    candidate_separator_color: 0x00E4E6EB
     text_color: 0x1F1F1F
     text_back_color: 0xFFFFFF
-    hilited_text_color: 0x52B17F
+    hilited_text_color: 0x2FB36D
     hilited_back_color: 0xFFFFFF
     candidate_text_color: 0x1F1F1F
     comment_text_color: 0x8A8A8E
-    hilited_candidate_text_color: 0x52B17F
-    hilited_candidate_back_color: 0x00EDEEF2
+    hilited_candidate_text_color: 0x2FB36D
+    hilited_candidate_back_color: 0x00E4E6EB
     hilited_comment_text_color: 0x8A8A8E
     label_color: 0x8A8A8E
     key_back_color: 0xFFFFFF
     key_text_color: 0x1F1F1F
-    key_symbol_color: 0x8A8A8E
-    liquid_key_back_color: 0x00EDEEF2
+    key_symbol_color: 0x8E929B
+    liquid_key_back_color: 0x00E4E6EB
     key_border_color: 0xFFFFFF
-    hilited_key_back_color: 0xD3D6DC
+    hilited_key_back_color: 0xC8CDD6
     hilited_key_text_color: 0x1F1F1F
-    hilited_key_symbol_color: 0x8A8A8E
+    hilited_key_symbol_color: 0x8E929B
     off_key_back_color: 0xFFFFFF
     off_key_text_color: 0x1F1F1F
-    on_key_back_color: 0xD3D6DC
-    on_key_text_color: 0x1F1F1F
-    hilited_off_key_back_color: 0xD3D6DC
-    hilited_on_key_back_color: 0xC4C8CF
-    fn_back: 0xD3D6DC
+    on_key_back_color: 0xFFFFFF
+    on_key_text_color: 0x2FB36D
+    hilited_off_key_back_color: 0xC8CDD6
+    hilited_on_key_back_color: 0xB8BEC8
+    fn_back: 0xC8CDD6
     fn_text: 0x1F1F1F
-    accent_back: 0x52B17F
+    accent_back: 0x2FB36D
     accent_text: 0xFFFFFF
     preview_back_color: 0xFFFFFF
     preview_text_color: 0x1F1F1F
     shadow_color: 0x00000000
     long_text_back_color: 0xFFFFFF
-    liquid_keyboard_background: 0xEDEEF2
+    liquid_keyboard_background: 0xE4E6EB
   dark:
     name: 一炁深色
     light_scheme: default
-    back_color: 0x1C1C1E
-    keyboard_back_color: 0x1C1C1E
-    root_background: 0x1C1C1E
-    candidate_background: 0x1C1C1E
-    border_color: 0x1C1C1E
-    candidate_separator_color: 0x001C1C1E
+    back_color: 0x1E1E20
+    keyboard_back_color: 0x1E1E20
+    root_background: 0x1E1E20
+    candidate_background: 0x1E1E20
+    border_color: 0x1E1E20
+    candidate_separator_color: 0x001E1E20
     text_color: 0xE8E8E8
-    text_back_color: 0x2C2C2E
-    hilited_text_color: 0x5FC08E
-    hilited_back_color: 0x2C2C2E
+    text_back_color: 0x2E2E30
+    hilited_text_color: 0x3CC87D
+    hilited_back_color: 0x2E2E30
     candidate_text_color: 0xE8E8E8
     comment_text_color: 0x8E8E93
-    hilited_candidate_text_color: 0x5FC08E
-    hilited_candidate_back_color: 0x001C1C1E
+    hilited_candidate_text_color: 0x3CC87D
+    hilited_candidate_back_color: 0x001E1E20
     hilited_comment_text_color: 0x8E8E93
     label_color: 0x8E8E93
-    key_back_color: 0x3A3A3C
-    key_text_color: 0xF2F2F2
-    key_symbol_color: 0x9A9A9F
-    liquid_key_back_color: 0x001C1C1E
-    key_border_color: 0x3A3A3C
-    hilited_key_back_color: 0x2A2A2C
-    hilited_key_text_color: 0xF2F2F2
-    hilited_key_symbol_color: 0x9A9A9F
-    off_key_back_color: 0x3A3A3C
-    off_key_text_color: 0xF2F2F2
-    on_key_back_color: 0x2A2A2C
-    on_key_text_color: 0xF2F2F2
-    hilited_off_key_back_color: 0x2A2A2C
-    hilited_on_key_back_color: 0x232325
-    fn_back: 0x2A2A2C
-    fn_text: 0xF2F2F2
-    accent_back: 0x4AA374
+    key_back_color: 0x4A4A4D
+    key_text_color: 0xF5F5F7
+    key_symbol_color: 0xA6A6AC
+    liquid_key_back_color: 0x001E1E20
+    key_border_color: 0x4A4A4D
+    hilited_key_back_color: 0x343437
+    hilited_key_text_color: 0xF5F5F7
+    hilited_key_symbol_color: 0xA6A6AC
+    off_key_back_color: 0x4A4A4D
+    off_key_text_color: 0xF5F5F7
+    on_key_back_color: 0x6A6A6E
+    on_key_text_color: 0x3CC87D
+    hilited_off_key_back_color: 0x343437
+    hilited_on_key_back_color: 0x2A2A2D
+    fn_back: 0x343437
+    fn_text: 0xF5F5F7
+    accent_back: 0x2BAA66
     accent_text: 0xFFFFFF
-    preview_back_color: 0x3A3A3C
-    preview_text_color: 0xF2F2F2
+    preview_back_color: 0x4A4A4D
+    preview_text_color: 0xF5F5F7
     shadow_color: 0x00000000
-    long_text_back_color: 0x3A3A3C
-    liquid_keyboard_background: 0x1C1C1E
+    long_text_back_color: 0x4A4A4D
+    liquid_keyboard_background: 0x1E1E20

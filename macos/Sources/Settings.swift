@@ -17,6 +17,9 @@ final class Model: ObservableObject {
     @Published var inputSourceReady = Rime.inputSourceEnabled
     @Published var update: Updater.Release?
     @Published var updateMessage: String?
+    @Published var betaUpdates = Store.betaUpdates {
+        didSet { Store.betaUpdates = betaUpdates; checkUpdate(manual: true) }
+    }
     let sync = ClipboardSync()
     private var monitor: Any?
 
@@ -45,7 +48,7 @@ final class Model: ObservableObject {
 
     func checkUpdate(manual: Bool = false) {
         if manual { updateMessage = "正在检查…" }
-        Updater.check { [weak self] r, ok in
+        Updater.check(includeBeta: Store.betaUpdates) { [weak self] r, ok in
             self?.update = r
             if manual || self?.updateMessage == "正在检查…" {
                 self?.updateMessage = r != nil ? nil : (ok ? "已是最新版本" : "暂时无法检查更新，请稍后再试")
@@ -260,6 +263,7 @@ struct SettingsView: View {
                     Text(m).font(.caption).foregroundStyle(.secondary)
                 }
                 Text("版本 \(Updater.current)").font(.caption).foregroundStyle(.secondary)
+                Toggle("接受测试版更新", isOn: $model.betaUpdates).toggleStyle(.checkbox).controlSize(.small)
                 Button("检查更新") { model.checkUpdate(manual: true) }.controlSize(.small)
             }
         }

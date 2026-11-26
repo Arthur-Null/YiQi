@@ -123,6 +123,14 @@ final class Store {
         }
     }
 
+    static var betaUpdates: Bool {
+        get { FileManager.default.fileExists(atPath: dir.appendingPathComponent("beta-updates").path) }
+        set {
+            let f = dir.appendingPathComponent("beta-updates")
+            if newValue { FileManager.default.createFile(atPath: f.path, contents: nil) } else { try? FileManager.default.removeItem(at: f) }
+        }
+    }
+
     static let deviceID: String = {
         let f = dir.appendingPathComponent("device-id")
         if let s = try? String(contentsOf: f, encoding: .utf8), !s.isEmpty { return s }

@@ -60,17 +60,191 @@ patch("app/src/main/java/com/osfans/trime/ime/bar/InputBarDelegate.kt",
       "            }\n")
 patch("app/src/main/java/com/osfans/trime/ime/bar/InputBarDelegate.kt",
       "    override fun onStartInput(info: EditorInfo) {\n",
-      "    override fun onStartInput(info: EditorInfo) {\n        com.osfans.trime.qi.QiSync.reconnectNow()\n")
-# C2: 输入方式被设置页或首次按键切换后，工具栏按钮同步显示当前方式
+      "    override fun onStartInput(info: EditorInfo) {\n"
+      "        com.osfans.trime.qi.QiSync.reconnectNow()\n"
+      "        val want = com.osfans.trime.qi.QiSyncActivity.currentScheme()\n"
+      "        rime.launchOnReady { api ->\n"
+      "            if (api.statusCached.schemaId != want) api.selectSchema(want)\n"
+      "        }\n")
+# C2: 输入方式切换后立即更新工具栏图标与空格键方案显示，无需等待输入第一个字符
 patch("app/src/main/java/com/osfans/trime/ime/bar/InputBarDelegate.kt",
       "    override fun onRimeOptionUpdated(value: RimeMessage.OptionMessage.Data) {\n",
       "    override fun onRimeSchemaUpdated(schema: com.osfans.trime.core.SchemaItem) {\n"
+      "        alwaysUi.updateButtonsStyle(\"qi_flypy\", schema.id == com.osfans.trime.qi.QiSyncActivity.FLYPY)\n"
       "        syncToolbarOptionStates()\n"
       "    }\n\n"
       "    override fun onRimeOptionUpdated(value: RimeMessage.OptionMessage.Data) {\n")
+patch("app/src/main/java/com/osfans/trime/ime/keyboard/CommonKeyboardActionListener.kt",
+      "            private fun handleSwitchCharset(action: KeyAction) {\n"
+      "                val option = action.toggle.ifEmpty { return }\n",
+      "            private fun handleSwitchCharset(action: KeyAction) {\n"
+      "                val option = action.toggle.ifEmpty { return }\n"
+      "                if (option == \"qi_flypy\") {\n"
+      "                    rime.launchOnReady { api ->\n"
+      "                        val target = if (api.statusCached.schemaId == com.osfans.trime.qi.QiSyncActivity.FLYPY) {\n"
+      "                            com.osfans.trime.qi.QiSyncActivity.QUANPIN\n"
+      "                        } else {\n"
+      "                            com.osfans.trime.qi.QiSyncActivity.FLYPY\n"
+      "                        }\n"
+      "                        val raw = if (api.statusCached.isComposing) api.getRawInput() else \"\"\n"
+      "                        com.osfans.trime.qi.QiSyncActivity.requestScheme(target)\n"
+      "                        api.selectSchema(target)\n"
+      "                        if (raw.isNotEmpty()) api.simulateKeySequence(raw)\n"
+      "                    }\n"
+      "                    return\n"
+      "                }\n")
+patch("app/src/main/java/com/osfans/trime/ime/keyboard/KeyboardWindow.kt",
+      "    override fun onRimeSchemaUpdated(schema: SchemaItem) {\n"
+      "        switchKeyboard(\".default\")\n"
+      "    }\n",
+      "    override fun onRimeSchemaUpdated(schema: SchemaItem) {\n"
+      "        switchKeyboard(\".default\")\n"
+      "        ContextCompat.getMainExecutor(service).execute {\n"
+      "            cachedKeyboards.values.forEach { (_, v) -> v.invalidateAllKeys() }\n"
+      "        }\n"
+      "    }\n")
+# C2: 工具栏按钮支持 badge@ 圆角线框徽标，并统一图标按钮内边距（含候选栏展开箭头）
+patch("app/src/main/java/com/osfans/trime/ime/bar/ui/ToolButton.kt",
+      "        image.padding = dp(4)\n",
+      "        image.padding = dp(9)\n")
+patch("app/src/main/java/com/osfans/trime/ime/bar/ui/ToolButton.kt",
+      "        } else if (style.startsWith(\"ic@\")) {\n",
+      "        } else if (style.startsWith(\"badge@\")) {\n"
+      "            com.osfans.trime.qi.QiBadgeDrawable(context, style.substring(6))\n"
+      "        } else if (style.startsWith(\"ic@\")) {\n")
+# C3: 候选栏剪贴板提示改为微信输入法风格圆角气泡卡片
+patch("app/src/main/java/com/osfans/trime/ime/bar/ui/ClipboardSuggestionUi.kt",
+      "            val spacing = dp(4)\n",
+      "            val spacing = dp(8)\n"
+      "            setPadding(dp(4), 0, dp(4), 0)\n")
+patch("app/src/main/java/com/osfans/trime/ime/bar/ui/ClipboardSuggestionUi.kt",
+      "            imageDrawable =\n"
+      "                drawable(R.drawable.ic_clipboard_24)!!.apply {\n"
+      "                    setTint(scope.colors.candidateTextColor)\n"
+      "                }\n",
+      "            imageDrawable =\n"
+      "                drawable(R.drawable.ic_clipboard_24)!!.apply {\n"
+      "                    setTint(scope.color(\"accent_back\"))\n"
+      "                }\n")
+patch("app/src/main/java/com/osfans/trime/ime/bar/ui/ClipboardSuggestionUi.kt",
+      "        background = rippleDrawable(scope.colors.hilitedCandidateBackColor)\n",
+      "        background = android.graphics.drawable.GradientDrawable().apply {\n"
+      "            setColor(scope.color(\"text_back_color\"))\n"
+      "            cornerRadius = ctx.dp(16).toFloat()\n"
+      "        }\n")
+patch("app/src/main/java/com/osfans/trime/ime/bar/ui/ClipboardSuggestionUi.kt",
+      "        icon.imageDrawable?.setTint(scope.colors.candidateTextColor)\n"
+      "        text.setTextColor(scope.colors.candidateTextColor)\n"
+      "        dismiss.imageDrawable?.setTint(scope.colors.candidateTextColor)\n"
+      "        suggestionView.background =\n"
+      "            rippleDrawable(scope.colors.hilitedCandidateBackColor)\n",
+      "        icon.imageDrawable?.setTint(scope.color(\"accent_back\"))\n"
+      "        text.setTextColor(scope.colors.candidateTextColor)\n"
+      "        dismiss.imageDrawable?.setTint(scope.color(\"comment_text_color\"))\n"
+      "        suggestionView.background = android.graphics.drawable.GradientDrawable().apply {\n"
+      "            setColor(scope.color(\"text_back_color\"))\n"
+      "            cornerRadius = ctx.dp(16).toFloat()\n"
+      "        }\n")
+# C6: 浅色/深色按键增加轻微 1dp 底部立体阴影，贴近微信输入法与原生键盘质感
+patch("app/src/main/java/com/osfans/trime/ime/keyboard/KeyView.kt",
+      "        bg.setBounds(\n"
+      "            paddingLeft,\n"
+      "            paddingTop,\n"
+      "            width - paddingRight,\n"
+      "            height - paddingBottom,\n"
+      "        )\n"
+      "        bg.draw(canvas)\n",
+      "        if (!keyPressed) {\n"
+      "            val sh = GradientDrawable().apply {\n"
+      "                setColor(0x22000000)\n"
+      "                k.roundCorner.takeIf { it > 0f }?.let { cornerRadius = dp(it) }\n"
+      "            }\n"
+      "            val dy = dp(1)\n"
+      "            sh.setBounds(paddingLeft, paddingTop + dy, width - paddingRight, height - paddingBottom + dy)\n"
+      "            sh.draw(canvas)\n"
+      "        }\n"
+      "        bg.setBounds(\n"
+      "            paddingLeft,\n"
+      "            paddingTop,\n"
+      "            width - paddingRight,\n"
+      "            height - paddingBottom,\n"
+      "        )\n"
+      "        bg.draw(canvas)\n")
+# C6: 修复按键字符不居中：无上方长按提示的按键不做垂直下移，全角标点与符号按字形墨迹边界精确居中
+patch("app/src/main/java/com/osfans/trime/ime/keyboard/KeyView.kt",
+      "        if (label.isIconFont) {\n"
+      "            drawIcon(canvas, label, textSize.toInt(), textColor, key.keyTextOffsetX, key.keyTextOffsetY)\n"
+      "        } else {\n"
+      "            textPaint.apply {\n"
+      "                color = textColor\n"
+      "                this.textSize = textSize\n"
+      "                typeface = theme.fonts.key\n"
+      "                clearShadowLayer()\n"
+      "            }\n\n"
+      "            val centerX = (width - paddingLeft - paddingRight) / 2f + paddingLeft\n"
+      "            val centerY = (height - paddingTop - paddingBottom) / 2f + paddingTop\n"
+      "            val fontMetrics = textPaint.fontMetrics\n"
+      "            val adjustmentY = -(fontMetrics.ascent + fontMetrics.descent) / 2f\n\n"
+      "            canvas.drawText(label, centerX + sp(key.keyTextOffsetX), centerY + adjustmentY + sp(key.keyTextOffsetY), textPaint)\n"
+      "        }\n",
+      "        val hasTopSymbol = key.symbolLabel.isNotEmpty() && !keyboardView.hideKeySymbol\n"
+      "        val offsetY = if (hasTopSymbol) key.keyTextOffsetY else 0f\n"
+      "        if (label.isIconFont) {\n"
+      "            drawIcon(canvas, label, textSize.toInt(), textColor, key.keyTextOffsetX, offsetY)\n"
+      "        } else {\n"
+      "            textPaint.apply {\n"
+      "                color = textColor\n"
+      "                this.textSize = textSize\n"
+      "                typeface = theme.fonts.key\n"
+      "                clearShadowLayer()\n"
+      "            }\n\n"
+      "            val centerX = (width - paddingLeft - paddingRight) / 2f + paddingLeft\n"
+      "            val centerY = (height - paddingTop - paddingBottom) / 2f + paddingTop\n"
+      "            if (label.length == 1 && !label[0].isLetterOrDigit()) {\n"
+      "                val ink = Rect()\n"
+      "                textPaint.textAlign = Paint.Align.LEFT\n"
+      "                textPaint.getTextBounds(label, 0, label.length, ink)\n"
+      "                canvas.drawText(\n"
+      "                    label,\n"
+      "                    centerX - ink.exactCenterX() + sp(key.keyTextOffsetX),\n"
+      "                    centerY - ink.exactCenterY() + sp(offsetY),\n"
+      "                    textPaint,\n"
+      "                )\n"
+      "                textPaint.textAlign = Paint.Align.CENTER\n"
+      "            } else {\n"
+      "                val fontMetrics = textPaint.fontMetrics\n"
+      "                val adjustmentY = -(fontMetrics.ascent + fontMetrics.descent) / 2f\n"
+      "                canvas.drawText(label, centerX + sp(key.keyTextOffsetX), centerY + adjustmentY + sp(offsetY), textPaint)\n"
+      "            }\n"
+      "        }\n")
+patch("app/src/main/java/com/osfans/trime/ime/keyboard/KeyView.kt",
+      "            for (i in lines.indices) {\n"
+      "                val lineY = startY + lineHeight * i\n"
+      "                canvas.drawText(lines[i], centerX, lineY, symbolPaint)\n"
+      "            }\n",
+      "            for (i in lines.indices) {\n"
+      "                val line = lines[i]\n"
+      "                val lineY = startY + lineHeight * i\n"
+      "                if (line.length == 1 && !line[0].isLetterOrDigit()) {\n"
+      "                    val ink = Rect()\n"
+      "                    symbolPaint.textAlign = Paint.Align.LEFT\n"
+      "                    symbolPaint.getTextBounds(line, 0, line.length, ink)\n"
+      "                    canvas.drawText(line, centerX - ink.exactCenterX(), lineY, symbolPaint)\n"
+      "                    symbolPaint.textAlign = Paint.Align.CENTER\n"
+      "                } else {\n"
+      "                    canvas.drawText(line, centerX, lineY, symbolPaint)\n"
+      "                }\n"
+      "            }\n")
 patch("app/src/main/java/com/osfans/trime/data/prefs/AppPrefs.kt",
       "            CLIPBOARD_SUGGESTION_TIMEOUT,\n            20,\n",
       "            CLIPBOARD_SUGGESTION_TIMEOUT,\n            100,\n")
+# C1: 减少安卓端误触：提高长按触发阈值避免打字误出长按符号，并扩展边缘空白处热区
+patch("app/src/main/java/com/osfans/trime/data/prefs/AppPrefs.kt",
+      "        val expandKeypressArea = switch(R.string.expand_keypress_area_to_edge, EXPAND_KEYPRESS_AREA, false)\n",
+      "        val expandKeypressArea = switch(R.string.expand_keypress_area_to_edge, EXPAND_KEYPRESS_AREA, true)\n")
+patch("app/src/main/java/com/osfans/trime/data/prefs/AppPrefs.kt",
+      "            LONG_PRESS_TIMEOUT,\n            300,\n",
+      "            LONG_PRESS_TIMEOUT,\n            420,\n")
 
 # C4: 经公网服务器中转需要联网；在线更新需要安装新版的权限
 patch("app/src/main/AndroidManifest.xml",
@@ -94,13 +268,89 @@ patch("app/src/main/java/com/osfans/trime/ui/main/MainFragment.kt",
       '                startActivity(android.content.Intent(requireContext(), com.osfans.trime.qi.QiSyncActivity::class.java))\n'
       '            }\n')
 
-# C2: 设置首页只保留普通用户需要的条目，去掉 Rime 专用的方案、用户词典、配置
-for route, title, icon in [("SchemaList", "schemata", "ic_round_view_list_24"),
-                           ("UserDict", "user_dictionary", "ic_baseline_book_24"),
-                           ("Profile", "profile", "ic_baseline_snippet_folder_24")]:
+# C2: 设置首页只保留普通用户需要的条目，去掉 Rime / 同文底层技术项（含顶部部署与开发者菜单）
+for indent, route, title, icon in [
+    ("            ", "SchemaList", "schemata", "ic_round_view_list_24"),
+    ("            ", "UserDict", "user_dictionary", "ic_baseline_book_24"),
+    ("            ", "Profile", "profile", "ic_baseline_snippet_folder_24"),
+    ("                ", "General", "general", "ic_baseline_tune_24"),
+    ("                ", "CandidatesWindow", "candidates_window", "ic_baseline_list_alt_24"),
+    ("                ", "Theme", "theme", "ic_baseline_color_lens_24"),
+    ("                ", "Advanced", "advanced", "ic_baseline_more_horiz_24"),
+]:
     patch("app/src/main/java/com/osfans/trime/ui/main/MainFragment.kt",
-          f"            addDestinationPreference(\n                R.string.{title},\n                R.drawable.{icon},\n"
-          f"                NavigationRoute.{route},\n            )\n", "")
+          f"{indent}addDestinationPreference(\n{indent}    R.string.{title},\n{indent}    R.drawable.{icon},\n"
+          f"{indent}    NavigationRoute.{route},\n{indent})\n", "")
+patch("app/src/main/java/com/osfans/trime/ui/main/MainActivity.kt",
+      "        val optionMenuItems = listOf(\n"
+      "            menu.item(R.string.deploy, R.drawable.ic_baseline_refresh_reversed_24, showAsAction = true) {\n"
+      "                viewModel.rime.launchOnReady { it.deploy() }\n"
+      "            },\n"
+      "            menu.item(R.string.test_input, R.drawable.ic_baseline_keyboard_24, showAsAction = true) {\n"
+      "                testInputPanel?.show(window)\n"
+      "            },\n"
+      "            menu.item(R.string.developer) {\n"
+      "                navController.navigate(NavigationRoute.Developer)\n"
+      "            },\n"
+      "            menu.item(R.string.about) {\n"
+      "                navController.navigate(NavigationRoute.About)\n"
+      "            },\n"
+      "        )\n",
+      "        val optionMenuItems = listOf(\n"
+      "            menu.item(R.string.test_input, R.drawable.ic_baseline_keyboard_24, showAsAction = true) {\n"
+      "                testInputPanel?.show(window)\n"
+      "            },\n"
+      "        )\n")
+
+KB = "app/src/main/java/com/osfans/trime/ime/keyboard/"
+patch(KB + "Keyboard.kt", "    fun resetShift() {\n",
+      "    private var lastShiftTap = 0L\n\n"
+      "    fun clickShift() {\n"
+      "        val now = android.os.SystemClock.elapsedRealtime()\n"
+      "        val key = mShiftKey\n"
+      "        val shifted = modifier.hasFlag(KeyEvent.META_SHIFT_ON)\n"
+      "        when {\n"
+      "            key?.isOn == true -> {\n"
+      "                key.setOn(false)\n"
+      "                setModifier(KeyEvent.META_SHIFT_ON, false)\n"
+      "            }\n"
+      "            shifted && now - lastShiftTap < 400 -> key?.setOn(true)\n"
+      "            shifted -> setModifier(KeyEvent.META_SHIFT_ON, false)\n"
+      "            else -> setModifier(KeyEvent.META_SHIFT_ON, true)\n"
+      "        }\n"
+      "        lastShiftTap = now\n"
+      "    }\n\n"
+      "    fun resetShift() {\n")
+patch(KB + "KeyView.kt",
+      "        if (action.isModifierKey) {\n            keyboard.clickModifierKey(\n",
+      "        if (action.isModifierKey && key.isShift) {\n"
+      "            keyboard.clickShift()\n"
+      "            keyboardView.invalidateAllKeys()\n"
+      "            return\n"
+      "        }\n\n"
+      "        if (action.isModifierKey) {\n            keyboard.clickModifierKey(\n")
+patch(KB + "Key.kt", "    fun getLabel(): String = when {\n",
+      "    fun getLabel(): String = when {\n"
+      '        isShift -> when {\n'
+      '            isOn -> "ic@arrow_up_bold"\n'
+      '            parent.modifier.hasFlag(KeyEvent.META_SHIFT_ON) -> "ic@arrow_up_bold"\n'
+      '            else -> "ic@apple_keyboard_shift"\n'
+      '        }\n\n')
+patch(KB + "KeyView.kt",
+      "        if (label.isIconFont) {\n            drawIcon(canvas, label, textSize.toInt(), textColor, key.keyTextOffsetX, offsetY)\n",
+      "        if (label.isIconFont) {\n            drawIcon(canvas, label, textSize.toInt(), textColor, key.keyTextOffsetX, offsetY)\n"
+      "            if (key.isShift && key.isOn) {\n"
+      "                val unit = textSize / 24f\n"
+      "                val cx = (width - paddingLeft - paddingRight) / 2f + paddingLeft + sp(key.keyTextOffsetX)\n"
+      "                val cy = (height - paddingTop - paddingBottom) / 2f + paddingTop + sp(offsetY)\n"
+      "                textPaint.color = textColor\n"
+      "                canvas.drawRoundRect(cx - 5 * unit, cy + 9.6f * unit, cx + 5 * unit, cy + 11.4f * unit, unit, unit, textPaint)\n"
+      "            }\n")
+patch(KB + "KeyView.kt",
+      "        isSlideCursor = key.click?.isSlideCursor ?: false\n",
+      "        isSlideCursor = key.click?.let {\n"
+      "            it.isSlideCursor || (!it.isModifierKey && !it.isRepeatable && !it.isSlideDelete)\n"
+      "        } ?: false\n")
 
 # C2: 一炁主题：简洁的键盘外观（浅色 / 深色跟随系统），左上角「小鹤 / 全拼」按钮
 ROOT = pathlib.Path(__file__).resolve().parent
@@ -119,7 +369,7 @@ keys = section("preset_keys", "preset_keyboards").replace("preset_keys:\n", """p
   Qi_symbols: {label: 符, send: Eisu_toggle, select: symbols}
   Qi_number: {label: '123', send: Eisu_toggle, select: number}
   Qi_back: {label: 返回, send: Eisu_toggle, select: .default}
-  Qi_shift: {label: 'ic@apple_keyboard_shift', send: Shift_L, shift_lock: ascii_long}
+  Qi_shift: {label: 'ic@apple_keyboard_shift', send: Shift_L}
   Qi_backspace: {label: 'ic@backspace_outline', repeatable: true, send: BackSpace}
   Qi_space: {label: 空格, functional: false, send: space}
   Qi_emoji: {label: 表情, send: FUNCTION, command: liquid_keyboard, option: "表情"}
@@ -148,9 +398,20 @@ patch("app/src/main/java/com/osfans/trime/data/theme/ThemePrefs.kt",
 
 # C6: 界面中统一称「一炁输入法」
 for rel, pairs in {
-    "app/src/main/res/values-zh-rCN/strings.xml": [("同文输入法", "一炁输入法"), ("同文", "一炁")],
-    "app/src/main/res/values-zh-rTW/strings.xml": [("同文輸入法", "一炁輸入法"), ("同文", "一炁")],
-    "app/src/main/res/values/strings.xml": [("Trime", "YiQi")],
+    "app/src/main/res/values-zh-rCN/strings.xml": [
+        ("同文输入法", "一炁输入法"),
+        ("同文", "一炁"),
+        ("击响中文之韵", "小鹤双拼 · 全拼 · 跨端同步"),
+    ],
+    "app/src/main/res/values-zh-rTW/strings.xml": [
+        ("同文輸入法", "一炁輸入法"),
+        ("同文", "一炁"),
+        ("擊響中文之韻", "小鶴雙拼 · 全拼 · 跨端同步"),
+    ],
+    "app/src/main/res/values/strings.xml": [
+        ("Trime", "YiQi"),
+        ("Rimes with Your Keystrokes on Android", "小鹤双拼 · 全拼 · 跨端同步"),
+    ],
 }.items():
     p = T / rel
     s = p.read_text()

@@ -1,0 +1,236 @@
+import UIKit
+
+// C2, C3: 键盘顶部栏：空闲时左侧显示「小鹤 / 全拼」切换按钮、中间显示跨设备同步来的剪贴板气泡、右侧为工具按钮；
+// 打字时显示内联拼音与横向滑动候选词，右侧可展开更多候选。
+final class KeyboardTopBar: UIView {
+    var onToggleScheme: (() -> Void)?
+    var onSelectCandidate: ((Int) -> Void)?
+    var onToggleExpandCandidates: (() -> Void)?
+    var onTapClipboardSuggestion: ((String) -> Void)?
+    var onToggleEmoji: (() -> Void)?
+    var onToggleClipboardPanel: (() -> Void)?
+    var onDismissKeyboard: (() -> Void)?
+
+    private let preeditBar = UIView()
+    private let preeditLabel = UILabel()
+    private let barContainer = UIView()
+
+    // 空闲态工具栏
+    private let idleStack = UIStackView()
+    private let schemeButton = UIButton(type: .system)
+    private let clipPill = UIButton(type: .system)
+    private let rightTools = UIStackView()
+
+    // 打字态候选栏
+    private let candContainer = UIView()
+    private let candScroll = UIScrollView()
+    private let candStack = UIStackView()
+    private let expandButton = UIButton(type: .system)
+
+    private var suggestionText: String?
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        setupUI()
+    }
+
+    required init?(coder: NSCoder) { fatalError() }
+
+    private func setupUI() {
+        backgroundColor = KeyboardTheme.background
+
+        let root = UIStackView(arrangedSubviews: [preeditBar, barContainer])
+        root.axis = .vertical
+        root.spacing = 0
+        root.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(root)
+        NSLayoutConstraint.activate([
+            root.topAnchor.constraint(equalTo: topAnchor),
+            root.leadingAnchor.constraint(equalTo: leadingAnchor),
+            root.trailingAnchor.constraint(equalTo: trailingAnchor),
+            root.bottomAnchor.constraint(equalTo: bottomAnchor),
+        ])
+
+        // 拼音预编辑条
+        preeditBar.isHidden = true
+        preeditBar.backgroundColor = KeyboardTheme.pillBack
+        preeditLabel.font = .systemFont(ofSize: 14, weight: .medium)
+        preeditLabel.textColor = KeyboardTheme.candidateHighlight
+        preeditLabel.translatesAutoresizingMaskIntoConstraints = false
+        preeditBar.addSubview(preeditLabel)
+        NSLayoutConstraint.activate([
+            preeditBar.heightAnchor.constraint(equalToConstant: 24),
+            preeditLabel.leadingAnchor.constraint(equalTo: preeditBar.leadingAnchor, constant: 12),
+            preeditLabel.trailingAnchor.constraint(lessThanOrEqualTo: preeditBar.trailingAnchor, constant: -12),
+            preeditLabel.centerYAnchor.constraint(equalTo: preeditBar.centerYAnchor),
+        ])
+
+        barContainer.heightAnchor.constraint(equalToConstant: 40).isActive = true
+
+        // 空闲态：中间为同步剪贴板圆角卡片，右侧为无底色极简图标（表情 / 剪贴板 / 双全切换 / 收起）
+        idleStack.axis = .horizontal
+        idleStack.alignment = .center
+        idleStack.spacing = 4
+        idleStack.translatesAutoresizingMaskIntoConstraints = false
+        barContainer.addSubview(idleStack)
+        NSLayoutConstraint.activate([
+            idleStack.leadingAnchor.constraint(equalTo: barContainer.leadingAnchor, constant: 8),
+            idleStack.trailingAnchor.constraint(equalTo: barContainer.trailingAnchor, constant: -6),
+            idleStack.topAnchor.constraint(equalTo: barContainer.topAnchor),
+            idleStack.bottomAnchor.constraint(equalTo: barContainer.bottomAnchor),
+        ])
+
+        // C2: 右侧紧凑的「双 / 全」圆角线框徽标按钮，与安卓端样式一致
+        schemeButton.setTitle("双", for: .normal)
+        schemeButton.titleLabel?.font = .systemFont(ofSize: 11, weight: .bold)
+        schemeButton.setTitleColor(KeyboardTheme.text, for: .normal)
+        schemeButton.backgroundColor = .clear
+        schemeButton.layer.cornerRadius = 4.5
+        schemeButton.layer.borderWidth = 1.4
+        schemeButton.layer.borderColor = KeyboardTheme.text.cgColor
+        schemeButton.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            schemeButton.widthAnchor.constraint(equalToConstant: 20),
+            schemeButton.heightAnchor.constraint(equalToConstant: 20),
+        ])
+        schemeButton.addTarget(self, action: #selector(tapScheme), for: .touchUpInside)
+
+        // C3: 候选栏剪贴板提示圆角气泡（点一下直接输入全文）
+        clipPill.isHidden = true
+        clipPill.titleLabel?.font = .systemFont(ofSize: 13)
+        clipPill.titleLabel?.lineBreakMode = .byTruncatingTail
+        clipPill.setTitleColor(KeyboardTheme.text, for: .normal)
+        clipPill.tintColor = KeyboardTheme.candidateHighlight
+        clipPill.backgroundColor = KeyboardTheme.pillBack
+        clipPill.layer.cornerRadius = 15
+        clipPill.contentEdgeInsets = UIEdgeInsets(top: 5, left: 10, bottom: 5, right: 10)
+        clipPill.setImage(UIImage(systemName: "doc.on.clipboard")?.withConfiguration(
+            UIImage.SymbolConfiguration(pointSize: 12, weight: .medium)), for: .normal)
+        clipPill.imageEdgeInsets = UIEdgeInsets(top: 0, left: -4, bottom: 0, right: 4)
+        clipPill.addTarget(self, action: #selector(tapClipPill), for: .touchUpInside)
+
+        let spacer = UIView()
+        spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+
+        rightTools.axis = .horizontal
+        rightTools.spacing = 4
+        rightTools.alignment = .center
+        rightTools.setContentHuggingPriority(.required, for: .horizontal)
+        rightTools.addArrangedSubview(iconButton("face.smiling", action: #selector(tapEmoji)))
+        rightTools.addArrangedSubview(iconButton("doc.on.clipboard", action: #selector(tapClipPanel)))
+        rightTools.addArrangedSubview(schemeButton)
+        rightTools.addArrangedSubview(iconButton("chevron.down", action: #selector(tapDismiss)))
+
+        idleStack.addArrangedSubview(clipPill)
+        idleStack.addArrangedSubview(spacer)
+        idleStack.addArrangedSubview(rightTools)
+
+        // 打字态候选栏
+        candContainer.isHidden = true
+        candContainer.translatesAutoresizingMaskIntoConstraints = false
+        barContainer.addSubview(candContainer)
+        NSLayoutConstraint.activate([
+            candContainer.leadingAnchor.constraint(equalTo: barContainer.leadingAnchor),
+            candContainer.trailingAnchor.constraint(equalTo: barContainer.trailingAnchor),
+            candContainer.topAnchor.constraint(equalTo: barContainer.topAnchor),
+            candContainer.bottomAnchor.constraint(equalTo: barContainer.bottomAnchor),
+        ])
+
+        candScroll.showsHorizontalScrollIndicator = false
+        candScroll.translatesAutoresizingMaskIntoConstraints = false
+        candStack.axis = .horizontal
+        candStack.alignment = .center
+        candStack.spacing = 4
+        candStack.translatesAutoresizingMaskIntoConstraints = false
+        candScroll.addSubview(candStack)
+
+        expandButton.setImage(UIImage(systemName: "chevron.down")?.withConfiguration(
+            UIImage.SymbolConfiguration(pointSize: 14, weight: .medium)), for: .normal)
+        expandButton.tintColor = KeyboardTheme.text
+        expandButton.translatesAutoresizingMaskIntoConstraints = false
+        expandButton.addTarget(self, action: #selector(tapExpand), for: .touchUpInside)
+
+        candContainer.addSubview(candScroll)
+        candContainer.addSubview(expandButton)
+        NSLayoutConstraint.activate([
+            candScroll.leadingAnchor.constraint(equalTo: candContainer.leadingAnchor, constant: 6),
+            candScroll.topAnchor.constraint(equalTo: candContainer.topAnchor),
+            candScroll.bottomAnchor.constraint(equalTo: candContainer.bottomAnchor),
+            candScroll.trailingAnchor.constraint(equalTo: expandButton.leadingAnchor, constant: -2),
+
+            candStack.leadingAnchor.constraint(equalTo: candScroll.contentLayoutGuide.leadingAnchor),
+            candStack.trailingAnchor.constraint(equalTo: candScroll.contentLayoutGuide.trailingAnchor),
+            candStack.topAnchor.constraint(equalTo: candScroll.contentLayoutGuide.topAnchor),
+            candStack.bottomAnchor.constraint(equalTo: candScroll.contentLayoutGuide.bottomAnchor),
+            candStack.heightAnchor.constraint(equalTo: candScroll.frameLayoutGuide.heightAnchor),
+
+            expandButton.trailingAnchor.constraint(equalTo: candContainer.trailingAnchor, constant: -6),
+            expandButton.centerYAnchor.constraint(equalTo: candContainer.centerYAnchor),
+            expandButton.widthAnchor.constraint(equalToConstant: 34),
+            expandButton.heightAnchor.constraint(equalToConstant: 34),
+        ])
+    }
+
+    private func iconButton(_ sfName: String, action: Selector) -> UIButton {
+        let b = UIButton(type: .system)
+        b.setImage(UIImage(systemName: sfName)?.withConfiguration(
+            UIImage.SymbolConfiguration(pointSize: 15, weight: .medium)), for: .normal)
+        b.tintColor = KeyboardTheme.text
+        b.backgroundColor = .clear
+        b.layer.cornerRadius = 16
+        b.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            b.widthAnchor.constraint(equalToConstant: 32),
+            b.heightAnchor.constraint(equalToConstant: 32),
+        ])
+        b.addTarget(self, action: action, for: .touchUpInside)
+        return b
+    }
+
+    func update(snapshot: QiRimeSnapshot, clipSuggestion: String?, expanded: Bool) {
+        schemeButton.setTitle(snapshot.schema == .flypy ? "双" : "全", for: .normal)
+        suggestionText = clipSuggestion
+        if let s = clipSuggestion, !s.isEmpty {
+            let clean = s.replacingOccurrences(of: "\n", with: " ").trimmingCharacters(in: .whitespaces)
+            let preview = clean.count > 24 ? String(clean.prefix(24)) + "…" : clean
+            clipPill.setTitle(preview, for: .normal)
+            clipPill.isHidden = false
+        } else {
+            clipPill.isHidden = true
+        }
+
+        let composing = snapshot.isComposing
+        preeditBar.isHidden = snapshot.preedit.isEmpty
+        preeditLabel.text = snapshot.preedit
+        idleStack.isHidden = composing
+        candContainer.isHidden = !composing
+
+        let iconName = expanded ? "chevron.up" : "chevron.down"
+        expandButton.setImage(UIImage(systemName: iconName)?.withConfiguration(
+            UIImage.SymbolConfiguration(pointSize: 14, weight: .medium)), for: .normal)
+
+        candStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        for (idx, cand) in snapshot.candidates.enumerated() {
+            let b = UIButton(type: .system)
+            let title = cand.comment.isEmpty ? cand.text : "\(cand.text) \(cand.comment)"
+            b.setTitle(title, for: .normal)
+            b.titleLabel?.font = .systemFont(ofSize: 18, weight: idx == snapshot.highlightedIndex ? .medium : .regular)
+            b.setTitleColor(idx == snapshot.highlightedIndex ? KeyboardTheme.candidateHighlight : KeyboardTheme.text, for: .normal)
+            b.contentEdgeInsets = UIEdgeInsets(top: 6, left: 10, bottom: 6, right: 10)
+            b.tag = idx
+            b.addTarget(self, action: #selector(tapCand(_:)), for: .touchUpInside)
+            candStack.addArrangedSubview(b)
+        }
+        candScroll.setContentOffset(.zero, animated: false)
+    }
+
+    @objc private func tapScheme() { onToggleScheme?() }
+    @objc private func tapClipPill() {
+        if let s = suggestionText { onTapClipboardSuggestion?(s) }
+    }
+    @objc private func tapEmoji() { onToggleEmoji?() }
+    @objc private func tapClipPanel() { onToggleClipboardPanel?() }
+    @objc private func tapDismiss() { onDismissKeyboard?() }
+    @objc private func tapExpand() { onToggleExpandCandidates?() }
+    @objc private func tapCand(_ sender: UIButton) { onSelectCandidate?(sender.tag) }
+}

@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=一炁输入法
+Name[en]=YiQi Input
+Comment=小鹤双拼与全拼输入法，支持多端剪贴板同步
+Exec=yiqi --settings
+Icon=yiqi
+Terminal=false
+Categories=Utility;Settings;
+StartupWMClass=yiqi-ui

@@ -20,7 +20,7 @@ enum Updater {
         return false
     }
 
-    static func check(_ done: @escaping (Release?, Bool) -> Void) {
+    static func check(includeBeta: Bool, _ done: @escaping (Release?, Bool) -> Void) {
         var req = URLRequest(url: releases)
         req.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
         URLSession.shared.dataTask(with: req) { data, _, _ in
@@ -28,7 +28,7 @@ enum Updater {
             var ok = false
             if let data, let list = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
                 ok = true
-                for r in list where (r["draft"] as? Bool) != true {
+                for r in list where (r["draft"] as? Bool) != true && (includeBeta || (r["prerelease"] as? Bool) != true) {
                     guard let tag = r["tag_name"] as? String, let assets = r["assets"] as? [[String: Any]],
                           let pkg = assets.first(where: { ($0["name"] as? String) == "YiQi-macOS.pkg" }),
                           let s = pkg["browser_download_url"] as? String, let url = URL(string: s) else { continue }

@@ -1,3 +1,6 @@
 build/
 dist/
 android/signing/
+ios/Frameworks/
+ios/Resources/SharedSupport/
+ios/YiQi.xcodeproj/

@@ -26,8 +26,8 @@ preset_keyboards:
     - {click: k, label: K, long_click: '“'}
     - {click: l, label: L, long_click: '”'}
     - {width: 5}
-    - {click: Qi_shift, width: 14, key_back_color: fn_back, key_text_color: fn_text}
-    - {width: 1}
+    - {click: Qi_shift, width: 13.5, key_back_color: fn_back, key_text_color: fn_text}
+    - {width: 1.5}
     - {click: z, label: Z, long_click: '@'}
     - {click: x, label: X, long_click: '.'}
     - {click: c, label: C, long_click: '#'}
@@ -35,15 +35,15 @@ preset_keyboards:
     - {click: b, label: B, long_click: '?'}
     - {click: n, label: N, long_click: '!'}
     - {click: m, label: M, long_click: '…'}
-    - {width: 1}
-    - {click: Qi_backspace, width: 14, key_back_color: fn_back, key_text_color: fn_text}
-    - {click: Qi_symbols, width: 12, key_text_size: 18, key_back_color: fn_back, key_text_color: fn_text}
-    - {click: Qi_number, width: 12, key_text_size: 17, key_back_color: fn_back, key_text_color: fn_text}
-    - {click: ',', label: '，', width: 9}
-    - {click: space, width: 34}
-    - {click: '.', label: '。', width: 9}
-    - {click: Qi_lang, width: 9, key_text_size: 18, key_back_color: fn_back, key_text_color: fn_text}
-    - {click: Return, width: 15, key_back_color: accent_back, key_text_color: accent_text}
+    - {width: 1.5}
+    - {click: Qi_backspace, width: 13.5, key_back_color: fn_back, key_text_color: fn_text}
+    - {click: Qi_symbols, width: 11, key_text_size: 16, key_back_color: fn_back, key_text_color: fn_text}
+    - {click: Qi_number, width: 11, key_text_size: 15, key_back_color: fn_back, key_text_color: fn_text}
+    - {click: ',', label: '，', width: 10}
+    - {click: space, width: 32}
+    - {click: '.', label: '。', width: 10}
+    - {click: Qi_lang, width: 10, key_text_size: 16, key_back_color: fn_back, key_text_color: fn_text}
+    - {click: Return, width: 16, key_text_size: 16, key_back_color: accent_back, key_text_color: accent_text}
 
   number:
     name: 一炁数字
@@ -115,14 +115,14 @@ preset_keyboards:
     - {click: Return, width: 15, key_back_color: accent_back, key_text_color: accent_text}
 
 tool_bar:
-  button_spacing: 4
+  button_spacing: 2
   primary_button:
-    size: [60, -1]
-    background: {type: rectangle, corner_radius: 8, normal: 0x00000000, highlight: hilited_key_back_color}
-    foreground: {option_styles: ["全拼", "小鹤"], font_size: 16, padding: 6, normal: candidate_text_color}
-    action: Qi_scheme
+    size: [42, 42]
+    background: {type: circle, normal: 0x00000000, highlight: hilited_key_back_color, vertical_inset: 4, horizontal_inset: 4}
+    foreground: {style: "ic@cog_outline", normal: candidate_text_color, padding: 10, font_size: 16}
+    action: Settings
   buttons:
-    - {background: {type: circle, normal: fn_back, highlight: hilited_key_back_color}, foreground: {style: "ic@chevron_down", normal: candidate_text_color, padding: 7}, action: Hide}
-    - {background: {type: circle, normal: fn_back, highlight: hilited_key_back_color}, foreground: {style: "ic@clipboard_outline", normal: candidate_text_color, padding: 8}, action: clipboard_window}
-    - {background: {type: circle, normal: fn_back, highlight: hilited_key_back_color}, foreground: {style: "ic@emoticon_outline", normal: candidate_text_color, padding: 8}, action: Qi_emoji}
-    - {background: {type: circle, normal: fn_back, highlight: hilited_key_back_color}, foreground: {style: "ic@cog_outline", normal: candidate_text_color, padding: 8}, action: Settings}
+    - {size: [42, 42], background: {type: circle, normal: 0x00000000, highlight: hilited_key_back_color, vertical_inset: 4, horizontal_inset: 4}, foreground: {style: "ic@chevron_down", normal: candidate_text_color, padding: 9, font_size: 18}, action: Hide}
+    - {size: [42, 42], background: {type: circle, normal: 0x00000000, highlight: hilited_key_back_color, vertical_inset: 4, horizontal_inset: 4}, foreground: {option_styles: ["badge@全", "badge@双"], normal: candidate_text_color, padding: 10}, action: Qi_scheme}
+    - {size: [42, 42], background: {type: circle, normal: 0x00000000, highlight: hilited_key_back_color, vertical_inset: 4, horizontal_inset: 4}, foreground: {style: "ic@clipboard_outline", normal: candidate_text_color, padding: 10, font_size: 16}, action: clipboard_window}
+    - {size: [42, 42], background: {type: circle, normal: 0x00000000, highlight: hilited_key_back_color, vertical_inset: 4, horizontal_inset: 4}, foreground: {style: "ic@emoticon_outline", normal: candidate_text_color, padding: 10, font_size: 16}, action: Qi_emoji}

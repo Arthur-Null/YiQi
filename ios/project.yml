@@ -1,0 +1,76 @@
+name: YiQi
+options:
+  bundleIdPrefix: im.yiqi
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    MARKETING_VERSION: "1.3.1"
+    CURRENT_PROJECT_VERSION: "131"
+    SWIFT_VERSION: "5.9"
+    TARGETED_DEVICE_FAMILY: "1,2"
+    ENABLE_BITCODE: NO
+targets:
+  YiQi:
+    type: application
+    platform: iOS
+    sources:
+      - path: App
+      - path: Shared
+        excludes:
+          - QiRimeEngine.swift
+          - QiRimeBridge.h
+      - path: Resources/SharedSupport
+        type: folder
+      - path: Assets.xcassets
+    info:
+      path: App/Info.plist
+    entitlements:
+      path: App/YiQi.entitlements
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: im.yiqi.input
+        PRODUCT_NAME: YiQi
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+    dependencies:
+      - target: YiQiKeyboard
+        embed: true
+
+  YiQiKeyboard:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Keyboard
+      - path: Shared
+    info:
+      path: Keyboard/Info.plist
+    entitlements:
+      path: Keyboard/YiQiKeyboard.entitlements
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: im.yiqi.input.keyboard
+        PRODUCT_NAME: YiQiKeyboard
+        SWIFT_OBJC_BRIDGING_HEADER: Shared/QiRimeBridge.h
+        HEADER_SEARCH_PATHS:
+          - "$(PROJECT_DIR)/Frameworks/librime-static.xcframework/ios-arm64/Headers"
+          - "$(PROJECT_DIR)/Frameworks/librime-static.xcframework/ios-arm64_x86_64-simulator/Headers"
+        OTHER_LDFLAGS:
+          - "$(inherited)"
+          - "-lc++"
+    dependencies:
+      - framework: Frameworks/librime-static.xcframework
+        embed: false
+
+  YiQiTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Tests
+      - path: Shared
+        excludes:
+          - QiRimeEngine.swift
+          - QiRimeBridge.h
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: im.yiqi.input.tests

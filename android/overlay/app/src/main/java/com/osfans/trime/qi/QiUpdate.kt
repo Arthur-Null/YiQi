@@ -29,18 +29,23 @@ object QiUpdate {
         return false
     }
 
-    fun check(): Release? = checkWithStatus().first
+    private fun prefs(context: Context) = context.getSharedPreferences("qi_sync", Context.MODE_PRIVATE)
 
-    fun checkWithStatus(): Pair<Release?, Boolean> = runCatching { checkOrThrow() to true }.getOrElse { null to false }
+    fun betaEnabled(context: Context): Boolean = prefs(context).getBoolean("beta_updates", false)
 
-    private fun checkOrThrow(): Release? = run {
+    fun setBetaEnabled(context: Context, on: Boolean) = prefs(context).edit().putBoolean("beta_updates", on).apply()
+
+    fun checkWithStatus(context: Context): Pair<Release?, Boolean> =
+        runCatching { checkOrThrow(betaEnabled(context)) to true }.getOrElse { null to false }
+
+    private fun checkOrThrow(includeBeta: Boolean): Release? = run {
         val body = http.newCall(Request.Builder().url(RELEASES).header("Accept", "application/vnd.github+json").build())
             .execute().use { it.body?.string() } ?: error("no response")
         val list = JSONArray(body)
         var found: Release? = null
         for (i in 0 until list.length()) {
             val r = list.getJSONObject(i)
-            if (r.optBoolean("draft")) continue
+            if (r.optBoolean("draft") || (r.optBoolean("prerelease") && !includeBeta)) continue
             val assets = r.getJSONArray("assets")
             for (j in 0 until assets.length()) {
                 val a = assets.getJSONObject(j)
