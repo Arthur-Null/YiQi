@@ -30,8 +30,10 @@ final class KeyboardView: UIView {
     private var candidates: [QiCandidate] = []
     private var latestClip: String?
     private var hasFullAccess = true
+    private var syncStatus = ""
+    private var syncOK = false
     private var repeatTimer: Timer?
-    private lazy var haptic = QiHaptic(view: self)
+    private let haptic = QiHaptic()
     func setHapticLevel(_ l: Int) { haptic.setLevel(l) }
 
     private static let row1: [(String, String)] = [
@@ -96,10 +98,14 @@ final class KeyboardView: UIView {
     var currentPage: KeyboardPage { page }
 
     func configure(asciiMode: Bool, returnLabel: String, showGlobe: Bool,
-                   candidates: [QiCandidate], latestClip: String?, hasFullAccess: Bool) {
+                   candidates: [QiCandidate], latestClip: String?, hasFullAccess: Bool,
+                   syncStatus: String, syncOK: Bool) {
         let needRebuild = self.asciiMode != asciiMode || self.returnLabel != returnLabel ||
             self.showGlobe != showGlobe || (page == .candidates && self.candidates != candidates) ||
-            (page == .clipboard && (self.latestClip != latestClip || self.hasFullAccess != hasFullAccess))
+            (page == .clipboard && (self.latestClip != latestClip || self.hasFullAccess != hasFullAccess ||
+                                    self.syncStatus != syncStatus))
+        self.syncStatus = syncStatus
+        self.syncOK = syncOK
         self.asciiMode = asciiMode
         self.returnLabel = returnLabel
         self.showGlobe = showGlobe
@@ -122,6 +128,17 @@ final class KeyboardView: UIView {
         }
         if page == .qwerty || page == .numbers || page == .symbols {
             enableCursorDrag(in: content)
+        }
+        attachPressFeedback(in: content)
+    }
+
+    // 按下即震（与系统键盘一致，松手不再震）。退格自己在按下时震，这里跳过。
+    private func attachPressFeedback(in view: UIView) {
+        for sub in view.subviews {
+            if let k = sub as? KeyButton, !k.dragDisabled {
+                k.addAction(UIAction { [weak self] _ in self?.tick() }, for: .touchDown)
+            }
+            attachPressFeedback(in: sub)
         }
     }
 
@@ -423,6 +440,15 @@ final class KeyboardView: UIView {
             refresh.widthAnchor.constraint(equalToConstant: 72),
         ])
 
+        // C3: 同步状态一眼可见（已连接 / 未配对 / 连接中…），不行时知道卡在哪一步
+        if hasFullAccess {
+            let status = UILabel()
+            status.font = .systemFont(ofSize: 12, weight: .medium)
+            status.textColor = syncOK ? KeyboardTheme.candidateHighlight : KeyboardTheme.hint
+            status.text = "● 剪贴板同步：\(syncStatus)"
+            status.numberOfLines = 2
+            root.addArrangedSubview(status)
+        }
         root.addArrangedSubview(card)
         root.addArrangedSubview(actions)
         pin(root, to: content)
@@ -513,7 +539,6 @@ final class KeyboardView: UIView {
 
         b.addTapAction { [weak self] in
             guard let self else { return }
-            self.tick()
             if self.shiftState != .off {
                 // 大写字母不进拼音引擎：先上屏正在输入的拼音，再直接输入大写字母
                 self.onDirectText?(ch.uppercased())
@@ -548,7 +573,7 @@ final class KeyboardView: UIView {
         b.setTitle(title, for: .normal)
         b.setTitleColor(KeyboardTheme.text, for: .normal)
         b.titleLabel?.font = .systemFont(ofSize: 17)
-        b.addTapAction { [weak self] in self?.tick(); action() }
+        b.addTapAction { action() }
         return b
     }
 
@@ -571,14 +596,14 @@ final class KeyboardView: UIView {
         b.setTitle(title, for: .normal)
         b.setTitleColor(KeyboardTheme.text, for: .normal)
         b.titleLabel?.font = .systemFont(ofSize: 15, weight: .medium)
-        b.addTapAction { [weak self] in self?.tick(); action() }
+        b.addTapAction { action() }
         return b
     }
 
     private func iconFnKey(_ sfName: String, action: @escaping () -> Void) -> KeyButton {
         let b = KeyButton(normal: KeyboardTheme.fnBack, pressed: KeyboardTheme.fnHighlight)
         b.setIcon(sfName)
-        b.addTapAction { [weak self] in self?.tick(); action() }
+        b.addTapAction { action() }
         return b
     }
 
@@ -588,7 +613,7 @@ final class KeyboardView: UIView {
         b.setTitle(title, for: .normal)
         b.setTitleColor(KeyboardTheme.accentText, for: .normal)
         b.titleLabel?.font = .systemFont(ofSize: 15, weight: .medium)
-        b.addTapAction { [weak self] in self?.tick(); action() }
+        b.addTapAction { action() }
         return b
     }
 

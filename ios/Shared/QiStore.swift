@@ -30,10 +30,14 @@ enum QiStore {
     // 所以不能写死分组名：从这次签名实际拿到的描述文件里读出分组，主程序和键盘才能读到同一份数据。
     static let appGroupID: String = {
         var candidates: [String] = []
-        if let alt = Bundle.main.object(forInfoDictionaryKey: "ALTAppGroups") as? [String] {
-            candidates += alt
+        // 键盘扩展自己的包里不一定带这些信息，所以同时看它所在的主程序包。
+        let appBundleURL = Bundle.main.bundleURL.deletingLastPathComponent().deletingLastPathComponent()
+        for bundle in [Bundle.main, Bundle(url: appBundleURL)].compactMap({ $0 }) {
+            if let alt = bundle.object(forInfoDictionaryKey: "ALTAppGroups") as? [String] {
+                candidates += alt
+            }
+            candidates += provisionedAppGroups(in: bundle)
         }
-        candidates += provisionedAppGroups()
         candidates.sort { $0.hasPrefix(baseAppGroupID) && !$1.hasPrefix(baseAppGroupID) }
         candidates.append(baseAppGroupID)
         for g in candidates where FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: g) != nil {
@@ -42,8 +46,8 @@ enum QiStore {
         return baseAppGroupID
     }()
 
-    private static func provisionedAppGroups() -> [String] {
-        guard let url = Bundle.main.url(forResource: "embedded", withExtension: "mobileprovision"),
+    private static func provisionedAppGroups(in bundle: Bundle) -> [String] {
+        guard let url = bundle.url(forResource: "embedded", withExtension: "mobileprovision"),
               let data = try? Data(contentsOf: url),
               let start = data.range(of: Data("<?xml".utf8)),
               let end = data.range(of: Data("</plist>".utf8), in: start.lowerBound..<data.endIndex),

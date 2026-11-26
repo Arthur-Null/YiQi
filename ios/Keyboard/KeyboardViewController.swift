@@ -62,6 +62,7 @@ final class KeyboardViewController: UIInputViewController {
 
         // C3: 键盘弹出时连接中转同步剪贴板；若刚收到其他设备复制的文本，立即在候选栏展示并写入系统剪贴板。
         if hasFullAccess {
+            sync.onStatus = { [weak self] _ in self?.refreshUI() }
             sync.onIncomingClip = { [weak self] clip in
                 self?.clipSuggestion = clip.text
                 self?.latestClipText = clip.text
@@ -286,7 +287,11 @@ final class KeyboardViewController: UIInputViewController {
             showGlobe: needsInputModeSwitchKey,
             candidates: currentSnapshot.candidates,
             latestClip: latestClipText,
-            hasFullAccess: hasFullAccess
+            hasFullAccess: hasFullAccess,
+            syncStatus: sync.status == .unpaired
+                ? "未配对。请先打开一炁 App，在「剪贴板同步」里加入同步组"
+                : sync.status.label,
+            syncOK: sync.status == .connected
         )
     }
 }
