@@ -6,8 +6,8 @@ options:
   createIntermediateGroups: true
 settings:
   base:
-    MARKETING_VERSION: "1.3.1"
-    CURRENT_PROJECT_VERSION: "131"
+    MARKETING_VERSION: "1.4.1"
+    CURRENT_PROJECT_VERSION: "010401"
     SWIFT_VERSION: "5.9"
     TARGETED_DEVICE_FAMILY: "1,2"
     ENABLE_BITCODE: NO
@@ -26,8 +26,24 @@ targets:
       - path: Assets.xcassets
     info:
       path: App/Info.plist
+      properties:
+        CFBundleDevelopmentRegion: zh_CN
+        CFBundleDisplayName: 一炁输入法
+        CFBundleName: YiQi
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSRequiresIPhoneOS: true
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
     entitlements:
       path: App/YiQi.entitlements
+      properties:
+        com.apple.security.application-groups: [group.im.yiqi.input]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: im.yiqi.input
@@ -45,8 +61,24 @@ targets:
       - path: Shared
     info:
       path: Keyboard/Info.plist
+      properties:
+        CFBundleDevelopmentRegion: zh_CN
+        CFBundleDisplayName: 一炁输入法
+        CFBundleName: YiQiKeyboard
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSExtension:
+          NSExtensionAttributes:
+            IsASCIICapable: false
+            PrefersRightToLeft: false
+            PrimaryLanguage: zh-Hans
+            RequestsOpenAccess: true
+          NSExtensionPointIdentifier: com.apple.keyboard-service
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).KeyboardViewController
     entitlements:
       path: Keyboard/YiQiKeyboard.entitlements
+      properties:
+        com.apple.security.application-groups: [group.im.yiqi.input]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: im.yiqi.input.keyboard

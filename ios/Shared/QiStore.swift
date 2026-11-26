@@ -108,7 +108,7 @@ enum QiStore {
     static var hotkey: QiHotkey {
         let f = rimeUserDir.appendingPathComponent("qi_hotkey.txt")
         guard let s = try? String(contentsOf: f, encoding: .utf8) else { return defaultHotkey }
-        let lines = s.split(separator: "\n", maxSplits: 1).map(String.init)
+        let lines = s.split(whereSeparator: \.isNewline).map(String.init)
         guard lines.count == 2 else { return defaultHotkey }
         return QiHotkey(rime: lines[1].split(separator: " ").map(String.init), label: lines[0])
     }

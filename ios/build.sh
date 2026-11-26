@@ -54,7 +54,7 @@ xcodegen generate
 
 # 4. 在 iOS 模拟器上运行单元测试（C2, C3, C5, C7）
 xcodebuild test -project YiQi.xcodeproj -scheme YiQiTests \
-  -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build-for-testing >/dev/null
+  -destination 'platform=iOS Simulator,name=iPhone Air' CODE_SIGNING_ALLOWED=NO >/dev/null
 
 # 5. 编译真机包并打包为 dist/YiQi-iOS.ipa（无签名，可通过 AltStore / SideStore / TrollStore / Xcode 安装）
 xcodebuild -project YiQi.xcodeproj -scheme YiQi -configuration Release \
