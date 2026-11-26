@@ -371,13 +371,14 @@ def section(name, until):
 keys = section("preset_keys", "preset_keyboards").replace("preset_keys:\n", """preset_keys:
   Qi_scheme: {toggle: qi_flypy, send: SWITCH_CHARSET, states: [ 全拼, 小鹤 ]}
   Qi_lang: {toggle: ascii_mode, send: SWITCH_CHARSET, states: [ 中, 英 ]}
-  Qi_symbols: {label: 符, send: Eisu_toggle, select: symbols}
-  Qi_number: {label: '123', send: Eisu_toggle, select: number}
-  Qi_back: {label: 返回, send: Eisu_toggle, select: .default}
+  Qi_symbols: {label: 符号, send: Eisu_toggle, select: symbols}
+  Qi_digits: {label: '123', send: Eisu_toggle, select: digits}
+  Qi_number: {label: 'ic@qi_pad', send: Eisu_toggle, select: number}
+  Qi_back: {label: 'ic@qi_back', send: Eisu_toggle, select: .default}
   Qi_shift: {label: 'ic@qi_shift', send: Shift_L}
   Qi_backspace: {label: 'ic@qi_backspace', repeatable: true, send: BackSpace}
   Qi_space: {label: 空格, functional: false, send: space}
-  Qi_emoji: {label: 表情, send: FUNCTION, command: liquid_keyboard, option: "表情"}
+  Qi_emoji: {label: 'ic@qi_emoji', send: FUNCTION, command: liquid_keyboard, option: "表情"}
   Qi_lq_exit: {label: '←', send: FUNCTION, command: liquid_keyboard, option: "-1"}
 """, 1)
 liquid = section("liquid_keyboard", "android_keys")

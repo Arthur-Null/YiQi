@@ -37,40 +37,80 @@ preset_keyboards:
     - {click: m, label: M, long_click: '…'}
     - {width: 1.5}
     - {click: Qi_backspace, width: 13.5, key_back_color: fn_back, key_text_color: fn_text}
-    - {click: Qi_symbols, width: 11, key_text_size: 16, key_back_color: fn_back, key_text_color: fn_text}
-    - {click: Qi_number, width: 11, key_text_size: 15, key_back_color: fn_back, key_text_color: fn_text}
-    - {click: ',', label: '，', width: 10}
-    - {click: space, width: 32}
-    - {click: '.', label: '。', width: 10}
-    - {click: Qi_lang, width: 10, key_text_size: 16, key_back_color: fn_back, key_text_color: fn_text}
-    - {click: Return, width: 16, key_text_size: 16, key_back_color: accent_back, key_text_color: accent_text}
+    - {click: Qi_digits, width: 19, key_text_size: 17, key_back_color: fn_back, key_text_color: fn_text}
+    - {click: ',', label: '，', long_click: '。', width: 10}
+    - {click: space, width: 38}
+    - {click: Qi_lang, width: 11, key_text_size: 16, key_back_color: fn_back, key_text_color: fn_text}
+    - {click: Return, width: 22, key_text_size: 16, key_back_color: fn_back, key_text_color: fn_text}
+
+  digits:
+    name: 一炁数字符号
+    ascii_mode: 0
+    width: 10
+    height: 40
+    keys:
+    - {click: '1'}
+    - {click: '2'}
+    - {click: '3'}
+    - {click: '4'}
+    - {click: '5'}
+    - {click: '6'}
+    - {click: '7'}
+    - {click: '8'}
+    - {click: '9'}
+    - {click: '0'}
+    - {click: '-'}
+    - {click: '/'}
+    - {click: ':'}
+    - {click: '～', ascii: '~'}
+    - {click: '('}
+    - {click: ')'}
+    - {click: '…'}
+    - {click: '@'}
+    - {click: '“'}
+    - {click: '”'}
+    - {click: Qi_symbols, width: 13, key_text_size: 16, key_back_color: fn_back, key_text_color: fn_text}
+    - {width: 2.5}
+    - {click: '。', ascii: '.', width: 11.5}
+    - {click: '，', ascii: ',', width: 11.5}
+    - {click: '、', width: 11.5}
+    - {click: '？', label: '?', ascii: '?', width: 11.5}
+    - {click: '！', label: '!', ascii: '!', width: 11.5}
+    - {click: '.', width: 11.5}
+    - {width: 2.5}
+    - {click: Qi_backspace, width: 13, key_back_color: fn_back, key_text_color: fn_text}
+    - {click: Qi_back, width: 14, key_back_color: accent_back, key_text_color: accent_text}
+    - {click: Qi_emoji, width: 9.5, key_back_color: fn_back, key_text_color: fn_text}
+    - {click: Qi_number, width: 9.5, key_back_color: fn_back, key_text_color: fn_text}
+    - {click: space, width: 45}
+    - {click: Return, width: 22, key_text_size: 16, key_back_color: fn_back, key_text_color: fn_text}
 
   number:
-    name: 一炁数字
+    name: 一炁数字键盘
     ascii_mode: 1
     width: 20
     height: 40
     keys:
-    - {click: '+', width: 16, key_back_color: fn_back, key_text_color: fn_text}
-    - {click: '1', width: 22.6}
-    - {click: '2', width: 22.6}
-    - {click: '3', width: 22.6}
-    - {click: Qi_backspace, width: 16.2, key_back_color: fn_back, key_text_color: fn_text}
-    - {click: '-', width: 16, key_back_color: fn_back, key_text_color: fn_text}
-    - {click: '4', width: 22.6}
-    - {click: '5', width: 22.6}
-    - {click: '6', width: 22.6}
-    - {click: '.', width: 16.2, key_back_color: fn_back, key_text_color: fn_text}
-    - {click: '*', width: 16, key_back_color: fn_back, key_text_color: fn_text}
-    - {click: '7', width: 22.6}
-    - {click: '8', width: 22.6}
-    - {click: '9', width: 22.6}
-    - {click: '@', width: 16.2, key_back_color: fn_back, key_text_color: fn_text}
-    - {click: Qi_back, width: 16, key_back_color: fn_back, key_text_color: fn_text}
-    - {click: ',', width: 22.6}
-    - {click: '0', width: 22.6}
-    - {click: Qi_space, width: 22.6}
-    - {click: Return, width: 16.2, key_back_color: accent_back, key_text_color: accent_text}
+    - {click: '@', width: 18, key_back_color: fn_back, key_text_color: fn_text}
+    - {click: '1', width: 21}
+    - {click: '2', width: 21}
+    - {click: '3', width: 21}
+    - {click: Qi_backspace, width: 19, key_back_color: fn_back, key_text_color: fn_text}
+    - {click: '%', width: 18, key_back_color: fn_back, key_text_color: fn_text}
+    - {click: '4', width: 21}
+    - {click: '5', width: 21}
+    - {click: '6', width: 21}
+    - {click: Qi_space, width: 19}
+    - {click: '-', long_click: '+', width: 18, key_back_color: fn_back, key_text_color: fn_text}
+    - {click: '7', width: 21}
+    - {click: '8', width: 21}
+    - {click: '9', width: 21}
+    - {click: Qi_emoji, width: 19}
+    - {click: Qi_back, width: 18, key_back_color: accent_back, key_text_color: accent_text}
+    - {click: Qi_symbols, width: 21, key_text_size: 16}
+    - {click: '0', width: 21}
+    - {click: '.', width: 21}
+    - {click: Return, width: 19, key_text_size: 16, key_back_color: fn_back, key_text_color: fn_text}
 
   symbols:
     name: 一炁符号
@@ -78,41 +118,39 @@ preset_keyboards:
     width: 10
     height: 40
     keys:
-    - {click: '，', ascii: ','}
-    - {click: '。', ascii: '.'}
-    - {click: '？', ascii: '?'}
-    - {click: '！', ascii: '!'}
-    - {click: '、'}
-    - {click: '：', ascii: ':'}
-    - {click: '；', ascii: ';'}
-    - {click: '“'}
-    - {click: '”'}
-    - {click: '…'}
-    - {click: '（', ascii: '('}
-    - {click: '）', ascii: ')'}
-    - {click: '《'}
-    - {click: '》'}
+    - {click: '_'}
+    - {click: '—'}
+    - {click: ';'}
+    - {click: '|'}
+    - {click: '%'}
+    - {click: '+'}
+    - {click: '-'}
+    - {click: '×'}
+    - {click: '÷'}
+    - {click: '='}
     - {click: '【'}
     - {click: '】'}
-    - {click: '「'}
-    - {click: '」'}
-    - {click: '～', ascii: '~'}
-    - {click: '·'}
-    - {click: '@'}
+    - {click: '{'}
+    - {click: '}'}
+    - {click: '《'}
+    - {click: '》'}
     - {click: '#'}
-    - {click: '%'}
+    - {click: '$'}
     - {click: '&'}
-    - {click: '*'}
-    - {click: '-'}
-    - {click: '+'}
-    - {click: '='}
-    - {click: '/'}
-    - {click: '￥'}
-    - {click: Qi_back, width: 15, key_back_color: fn_back, key_text_color: fn_text}
-    - {click: Qi_number, width: 15, key_back_color: fn_back, key_text_color: fn_text}
-    - {click: Qi_space, width: 40}
-    - {click: Qi_backspace, width: 15, key_back_color: fn_back, key_text_color: fn_text}
-    - {click: Return, width: 15, key_back_color: accent_back, key_text_color: accent_text}
+    - {click: '·'}
+    - {click: Qi_digits, width: 13.5, key_text_size: 16, key_back_color: fn_back, key_text_color: fn_text}
+    - {width: 1.5}
+    - {click: '「', width: 11.6}
+    - {click: '」', width: 11.6}
+    - {click: '<', width: 11.6}
+    - {click: '>', width: 11.6}
+    - {click: '^', width: 11.6}
+    - {click: '*', width: 11.6}
+    - {width: 1.5}
+    - {click: Qi_backspace, width: 13.5, key_back_color: fn_back, key_text_color: fn_text}
+    - {click: Qi_back, width: 14, key_back_color: accent_back, key_text_color: accent_text}
+    - {click: Qi_space, width: 64}
+    - {click: Return, width: 22, key_text_size: 16, key_back_color: fn_back, key_text_color: fn_text}
 
 tool_bar:
   button_spacing: 2
