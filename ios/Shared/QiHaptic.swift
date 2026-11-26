@@ -4,25 +4,48 @@ import UIKit
 final class QiHaptic {
     static let levelTitles = ["关", "轻", "中", "强"]
 
+    // 键盘扩展里传入键盘视图：震动器绑定到这个视图，由系统按它判断是否播放；
+    // 震动器在第一次按键时才创建（此时键盘已经显示在屏幕上）。
+    private weak var view: UIView?
     private var level = 1
     private var generator: UIImpactFeedbackGenerator?
-    private var intensity: CGFloat = 0
+
+    init(view: UIView? = nil) {
+        self.view = view
+    }
 
     func setLevel(_ l: Int) {
-        guard l != level || generator == nil else { return }
+        guard l != level else { return }
         level = l
-        switch l {
-        case 0: generator = nil
-        case 1: generator = UIImpactFeedbackGenerator(style: .soft); intensity = 0.45
-        case 2: generator = UIImpactFeedbackGenerator(style: .light); intensity = 0.8
-        default: generator = UIImpactFeedbackGenerator(style: .medium); intensity = 1.0
+        generator = nil
+    }
+
+    private var style: UIImpactFeedbackGenerator.FeedbackStyle {
+        switch level {
+        case 1: return .soft
+        case 2: return .light
+        default: return .medium
         }
-        generator?.prepare()
+    }
+
+    private var intensity: CGFloat {
+        switch level {
+        case 1: return 0.5
+        case 2: return 0.8
+        default: return 1.0
+        }
     }
 
     func tick() {
-        guard let g = generator else { return }
-        g.impactOccurred(intensity: intensity)
-        g.prepare()
+        guard level > 0 else { return }
+        if #available(iOS 17.5, *), let v = view {
+            let g = generator ?? UIImpactFeedbackGenerator(style: style, view: v)
+            generator = g
+            g.impactOccurred(intensity: intensity, at: CGPoint(x: v.bounds.midX, y: v.bounds.midY))
+        } else {
+            let g = generator ?? UIImpactFeedbackGenerator(style: style)
+            generator = g
+            g.impactOccurred(intensity: intensity)
+        }
     }
 }

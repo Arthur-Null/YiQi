@@ -31,7 +31,7 @@ final class KeyboardView: UIView {
     private var latestClip: String?
     private var hasFullAccess = true
     private var repeatTimer: Timer?
-    private let haptic = QiHaptic()
+    private lazy var haptic = QiHaptic(view: self)
     func setHapticLevel(_ l: Int) { haptic.setLevel(l) }
 
     private static let row1: [(String, String)] = [
