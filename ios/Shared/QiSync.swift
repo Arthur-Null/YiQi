@@ -173,6 +173,19 @@ final class QiClipboardSync: NSObject, URLSessionWebSocketDelegate {
         connect()
     }
 
+    // 回到前台时：连接还活着就保持（不再显示「连接中」），确认已断开才重连。
+    func ensureConnected() {
+        guard let t = task, status == .connected else { reconnectNow(); return }
+        let gen = generation
+        t.sendPing { [weak self] err in
+            guard err != nil else { return }
+            DispatchQueue.main.async {
+                guard let self, self.generation == gen else { return }
+                self.reconnectNow()
+            }
+        }
+    }
+
     func disconnect() {
         dict?.disconnected()
         generation += 1

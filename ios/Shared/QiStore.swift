@@ -23,19 +23,74 @@ struct CachedClip: Codable, Equatable {
 
 // C1, C2, C3, C5: 主程序与键盘扩展通过 App Group 共享同步凭据、输入方式状态与最新剪贴板缓存。
 enum QiStore {
-    static let appGroupID = "group.im.yiqi.input"
-    static let keyboardBundleID = "im.yiqi.input.keyboard"
+    static let baseAppGroupID = "group.im.yiqi.input"
     static let defaultHotkey = QiHotkey(rime: ["Control+Shift+1", "Control+Shift+exclam"], label: "Ctrl + Shift + 1")
 
-    static var containerDir: URL {
-        if let g = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupID) {
-            try? FileManager.default.createDirectory(at: g, withIntermediateDirectories: true)
+    // 用户用自己的 Apple ID 通过 AltStore / SideStore 签名安装时，App Group 会被改名（附加账号编号）。
+    // 所以不能写死分组名：从这次签名实际拿到的描述文件里读出分组，主程序和键盘才能读到同一份数据。
+    static let appGroupID: String = {
+        var candidates: [String] = []
+        if let alt = Bundle.main.object(forInfoDictionaryKey: "ALTAppGroups") as? [String] {
+            candidates += alt
+        }
+        candidates += provisionedAppGroups()
+        candidates.sort { $0.hasPrefix(baseAppGroupID) && !$1.hasPrefix(baseAppGroupID) }
+        candidates.append(baseAppGroupID)
+        for g in candidates where FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: g) != nil {
             return g
         }
-        let docs = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return baseAppGroupID
+    }()
+
+    private static func provisionedAppGroups() -> [String] {
+        guard let url = Bundle.main.url(forResource: "embedded", withExtension: "mobileprovision"),
+              let data = try? Data(contentsOf: url),
+              let start = data.range(of: Data("<?xml".utf8)),
+              let end = data.range(of: Data("</plist>".utf8), in: start.lowerBound..<data.endIndex),
+              let plist = try? PropertyListSerialization.propertyList(
+                  from: data.subdata(in: start.lowerBound..<end.upperBound), format: nil) as? [String: Any],
+              let ent = plist["Entitlements"] as? [String: Any],
+              let groups = ent["com.apple.security.application-groups"] as? [String]
+        else { return [] }
+        return groups
+    }
+
+    // 键盘扩展的实际 bundle id（签名工具可能改过），用于判断用户是否已在系统里添加了一炁键盘。
+    static var keyboardBundleID: String {
+        let appex = Bundle.main.builtInPlugInsURL?.appendingPathComponent("YiQiKeyboard.appex")
+        return appex.flatMap { Bundle(url: $0)?.bundleIdentifier } ?? "im.yiqi.input.keyboard"
+    }
+
+    private static var privateDir: URL {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("YiQi")
-        try? FileManager.default.createDirectory(at: docs, withIntermediateDirectories: true)
-        return docs
+    }
+
+    static let containerDir: URL = {
+        guard let g = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupID) else {
+            try? FileManager.default.createDirectory(at: privateDir, withIntermediateDirectories: true)
+            return privateDir
+        }
+        try? FileManager.default.createDirectory(at: g, withIntermediateDirectories: true)
+        // 早先版本找不到共享分组时把配对信息、学到的词存在各自的私有目录里：合并进共享目录，不用重新配对，学过的词也不丢。
+        mergeMove(from: privateDir, into: g)
+        return g
+    }()
+
+    private static func mergeMove(from src: URL, into dst: URL) {
+        let fm = FileManager.default
+        guard let items = try? fm.contentsOfDirectory(at: src, includingPropertiesForKeys: [.isDirectoryKey]) else { return }
+        for item in items {
+            let target = dst.appendingPathComponent(item.lastPathComponent)
+            var isDir: ObjCBool = false
+            if fm.fileExists(atPath: target.path, isDirectory: &isDir) {
+                if isDir.boolValue, (try? item.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true {
+                    mergeMove(from: item, into: target)
+                }
+            } else {
+                try? fm.moveItem(at: item, to: target)
+            }
+        }
     }
 
     static var rimeUserDir: URL {

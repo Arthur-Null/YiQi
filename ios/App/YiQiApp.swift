@@ -43,7 +43,7 @@ final class AppModel: ObservableObject {
     func onBecomeActive() {
         refreshKeyboardEnabled()
         scheme = QiStore.scheme
-        sync.reconnectNow()
+        sync.ensureConnected()
         sync.syncLocalPasteboardIfNeeded()
     }
 
