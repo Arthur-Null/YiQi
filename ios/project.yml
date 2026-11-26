@@ -27,8 +27,9 @@ targets:
     info:
       path: App/Info.plist
       properties:
-        CFBundleDevelopmentRegion: zh_CN
-        CFBundleDisplayName: 一炁输入法
+        CFBundleDevelopmentRegion: en
+        CFBundleLocalizations: [en, zh-Hans]
+        CFBundleDisplayName: YiQi
         CFBundleName: YiQi
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
@@ -62,8 +63,9 @@ targets:
     info:
       path: Keyboard/Info.plist
       properties:
-        CFBundleDevelopmentRegion: zh_CN
-        CFBundleDisplayName: 一炁输入法
+        CFBundleDevelopmentRegion: en
+        CFBundleLocalizations: [en, zh-Hans]
+        CFBundleDisplayName: YiQi
         CFBundleName: YiQiKeyboard
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
