@@ -19,7 +19,20 @@ final class KeyboardViewController: UIInputViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        // 系统给键盘扩展的底层是半透明材质：铺一层不透明底色把它完全盖住，候选栏和按键区都不再透出毛玻璃。
         view.backgroundColor = KeyboardTheme.background
+        view.isOpaque = true
+        let backing = UIView()
+        backing.backgroundColor = KeyboardTheme.background
+        backing.isUserInteractionEnabled = false
+        backing.translatesAutoresizingMaskIntoConstraints = false
+        view.insertSubview(backing, at: 0)
+        NSLayoutConstraint.activate([
+            backing.topAnchor.constraint(equalTo: view.topAnchor),
+            backing.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            backing.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            backing.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+        ])
 
         let stack = UIStackView(arrangedSubviews: [topBar, keyboardView])
         stack.axis = .vertical
