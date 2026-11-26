@@ -34,6 +34,11 @@ patch("app/src/main/java/com/osfans/trime/data/prefs/AppPrefs.kt",
 patch("app/src/main/java/com/osfans/trime/core/data/UserDataManager.kt",
       "          - schema: luna_pinyin\n          - schema: luna_pinyin_simp\n",
       "          - schema: rime_frost_double_pinyin_flypy\n          - schema: rime_frost\n")
+# 旧版（雾凇词库）在手机上留下的 default.custom.yaml 仍列着已不存在的方案，会让部署失败、拼音打不出来：发现旧内容就重写
+patch("app/src/main/java/com/osfans/trime/core/data/UserDataManager.kt",
+      "        if (!custom.exists() && custom.createNewFile()) {\n            custom.writeText(",
+      "        if (custom.exists() && !custom.readText().contains(\"rime_frost\")) custom.delete()\n"
+      "        if (!custom.exists() && custom.createNewFile()) {\n            custom.writeText(")
 patch("app/src/main/java/com/osfans/trime/ui/setup/SetupActivity.kt",
       "        viewPager.isUserInputEnabled = modeSetupDone\n\n        prevButton.isGone = isFirstPage\n",
       "        viewPager.isUserInputEnabled = false\n\n        prevButton.isGone = viewPager.currentItem <= 1\n")
