@@ -62,6 +62,12 @@ xcodebuild -project YiQi.xcodeproj -scheme YiQi -configuration Release \
   CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" QI_BUILD="$(date +%m%d-%H%M)" build
 
 APP="$B/derived/Build/Products/Release-iphoneos/YiQi.app"
+
+# C3, C9: 用临时签名把 App Group 声明写进可执行文件。AltStore / SideStore 只按可执行文件里的声明
+# 给用户的 Apple ID 注册改名后的 App Group；不签名的包里没有声明，主程序和键盘就拿不到共享目录，
+# 键盘读不到配对、设置与词库。先签键盘扩展，再签外层 App。
+codesign -f -s - --entitlements "$IOS/Keyboard/YiQiKeyboard.entitlements" "$APP/PlugIns/YiQiKeyboard.appex"
+codesign -f -s - --entitlements "$IOS/App/YiQi.entitlements" "$APP"
 rm -rf "$B/Payload" "$ROOT/dist/YiQi-iOS.ipa"
 mkdir -p "$B/Payload"
 cp -R "$APP" "$B/Payload/"

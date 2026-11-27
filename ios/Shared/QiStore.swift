@@ -28,8 +28,17 @@ enum QiStore {
 
     // 用户用自己的 Apple ID 通过 AltStore / SideStore 签名安装时，App Group 会被改名（附加账号编号）。
     // 所以不能写死分组名：从这次签名实际拿到的描述文件里读出分组，主程序和键盘才能读到同一份数据。
+    // 诊断用：这次运行找到的分组候选与最终使用的位置（主程序和键盘各自显示，便于核对两边是否一致）。
+    private(set) static var groupCandidates: [String] = []
+    static var storageDiagnostic: String {
+        let usingGroup = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupID) != nil
+        let found = groupCandidates.isEmpty ? "无" : groupCandidates.joined(separator: ", ")
+        return usingGroup ? "共享分组 \(appGroupID)" : "私有目录（候选：\(found)）"
+    }
+
     static let appGroupID: String = {
         var candidates: [String] = []
+        defer { groupCandidates = Array(Set(candidates)).sorted() }
         // 键盘扩展自己的包里不一定带这些信息，所以同时看它所在的主程序包。
         let appBundleURL = Bundle.main.bundleURL.deletingLastPathComponent().deletingLastPathComponent()
         for bundle in [Bundle.main, Bundle(url: appBundleURL)].compactMap({ $0 }) {

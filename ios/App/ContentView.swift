@@ -135,6 +135,9 @@ struct ContentView: View {
                         Text(QiStore.buildStamp.isEmpty ? QiUpdater.current : "\(QiUpdater.current)（构建 \(QiStore.buildStamp)）")
                             .foregroundStyle(.secondary)
                     }
+                    Text("数据位置：\(QiStore.storageDiagnostic)")
+                        .font(.caption2).foregroundStyle(.secondary)
+                        .textSelection(.enabled)
                     Toggle("接受测试版更新", isOn: $model.betaUpdates)
                     Button("检查更新") { model.checkUpdate(manual: true) }
                     if model.update == nil, let m = model.updateMessage {

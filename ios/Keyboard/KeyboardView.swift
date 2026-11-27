@@ -446,8 +446,10 @@ final class KeyboardView: UIView {
             status.font = .systemFont(ofSize: 12, weight: .medium)
             status.textColor = syncOK ? KeyboardTheme.candidateHighlight : KeyboardTheme.hint
             let stamp = QiStore.buildStamp.isEmpty ? "" : "（键盘构建 \(QiStore.buildStamp)）"
-            status.text = "● 剪贴板同步：\(syncStatus)\(stamp)"
-            status.numberOfLines = 2
+            status.text = "● 剪贴板同步：\(syncStatus)\(stamp)\n数据位置：\(QiStore.storageDiagnostic)"
+            status.numberOfLines = 3
+            status.adjustsFontSizeToFitWidth = true
+            status.minimumScaleFactor = 0.7
             root.addArrangedSubview(status)
         }
         root.addArrangedSubview(card)
