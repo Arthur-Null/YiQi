@@ -49,5 +49,5 @@ For a technical requirement, ask why and record only the real need behind it. Fo
 
 ## Temporary
 
-- **T1**：iOS 端安装包（`YiQi-iOS.ipa`）已能在本机打出，但没有 Apple 开发者签名，只在电脑上的 iPhone Air 模拟器里跑通；需要用户用自己的 Apple ID 把 `.ipa` 签名安装到 iPhone（例如 AltStore / Xcode）；iOS 端的键盘、剪贴板与词库同步（C9）也因此没有在真机上验证过。
+- **T1**：iOS 端没有付费 Apple 开发者账号的正式签名，用户用免费 Apple ID 经 AltStore 安装（每 7 天需续签，更新要先删除再重装、重新加入同步组）；需要用户提供付费开发者账号，才能直接安装和升级、不用重新配对。
 - **T2**：Linux 端（Fcitx5 / IBus）的词库同步只做到收发快照文件，没有办法从外部触发 Rime 的「同步用户资料」；需要用户在输入法菜单里点「同步用户资料」才会合并到本机词库。
