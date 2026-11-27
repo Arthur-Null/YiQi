@@ -43,5 +43,7 @@
 		<key>NSExtensionPrincipalClass</key>
 		<string>$(PRODUCT_MODULE_NAME).KeyboardViewController</string>
 	</dict>
+	<key>QiBuild</key>
+	<string>$(QI_BUILD)</string>
 </dict>
 </plist>

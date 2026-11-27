@@ -59,6 +59,11 @@ enum QiStore {
         return groups
     }
 
+    // 打包时间（版本号相同时用来确认手机上装的、键盘正在跑的是不是最新包）；本机调试构建为空。
+    static var buildStamp: String {
+        (Bundle.main.object(forInfoDictionaryKey: "QiBuild") as? String) ?? ""
+    }
+
     // 键盘扩展的实际 bundle id（签名工具可能改过），用于判断用户是否已在系统里添加了一炁键盘。
     static var keyboardBundleID: String {
         let appex = Bundle.main.builtInPlugInsURL?.appendingPathComponent("YiQiKeyboard.appex")

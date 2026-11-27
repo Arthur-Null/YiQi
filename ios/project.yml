@@ -33,6 +33,7 @@ targets:
         CFBundleName: YiQi
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        QiBuild: $(QI_BUILD)
         LSRequiresIPhoneOS: true
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: false
@@ -69,6 +70,7 @@ targets:
         CFBundleName: YiQiKeyboard
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        QiBuild: $(QI_BUILD)
         NSExtension:
           NSExtensionAttributes:
             IsASCIICapable: false

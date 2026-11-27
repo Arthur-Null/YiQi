@@ -445,7 +445,8 @@ final class KeyboardView: UIView {
             let status = UILabel()
             status.font = .systemFont(ofSize: 12, weight: .medium)
             status.textColor = syncOK ? KeyboardTheme.candidateHighlight : KeyboardTheme.hint
-            status.text = "● 剪贴板同步：\(syncStatus)"
+            let stamp = QiStore.buildStamp.isEmpty ? "" : "（键盘构建 \(QiStore.buildStamp)）"
+            status.text = "● 剪贴板同步：\(syncStatus)\(stamp)"
             status.numberOfLines = 2
             root.addArrangedSubview(status)
         }

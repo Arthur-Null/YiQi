@@ -59,7 +59,7 @@ xcodebuild test -project YiQi.xcodeproj -scheme YiQiTests \
 # 5. 编译真机包并打包为 dist/YiQi-iOS.ipa（无签名，可通过 AltStore / SideStore / TrollStore / Xcode 安装）
 xcodebuild -project YiQi.xcodeproj -scheme YiQi -configuration Release \
   -sdk iphoneos -derivedDataPath "$B/derived" \
-  CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build
+  CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" QI_BUILD="$(date +%m%d-%H%M)" build
 
 APP="$B/derived/Build/Products/Release-iphoneos/YiQi.app"
 rm -rf "$B/Payload" "$ROOT/dist/YiQi-iOS.ipa"

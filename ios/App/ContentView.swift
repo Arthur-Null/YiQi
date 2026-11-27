@@ -132,7 +132,8 @@ struct ContentView: View {
                     HStack {
                         Text("版本")
                         Spacer()
-                        Text(QiUpdater.current).foregroundStyle(.secondary)
+                        Text(QiStore.buildStamp.isEmpty ? QiUpdater.current : "\(QiUpdater.current)（构建 \(QiStore.buildStamp)）")
+                            .foregroundStyle(.secondary)
                     }
                     Toggle("接受测试版更新", isOn: $model.betaUpdates)
                     Button("检查更新") { model.checkUpdate(manual: true) }
